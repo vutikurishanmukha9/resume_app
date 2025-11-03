@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="AI-powered resume analyzer that predicts best-fit jobs and estimates salary">
+    <title>AI Resume Analyzer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🤖 AI Resume Analyzer</h1>
+            <p class="subtitle">Upload your resume to predict your best-fit job and estimated salary</p>
+        </header>
+
+        <main>
+            <form id="uploadForm" enctype="multipart/form-data">
+                <div class="upload-section">
+                    <div class="file-input-wrapper">
+                        <input 
+                            type="file" 
+                            id="resumeFile"
+                            name="resume" 
+                            accept=".pdf,.txt" 
+                            required
+                            aria-label="Upload resume file"
+                        >
+                        <label for="resumeFile" class="file-label">
+                            <span class="file-icon">📄</span>
+                            <span class="file-text">Choose File (PDF or TXT)</span>
+                        </label>
+                        <div id="fileName" class="file-name"></div>
+                    </div>
+
+                    <button type="submit" id="analyzeBtn" class="analyze-btn">
+                        <span class="btn-text">Analyze Resume</span>
+                        <span class="btn-loader" style="display: none;">⏳ Analyzing...</span>
+                    </button>
+                </div>
+            </form>
+
+            <div id="result" class="result-section" style="display: none;">
+                <!-- Results will be dynamically inserted here -->
+            </div>
+
+            <div id="error" class="error-message" style="display: none;">
+                <!-- Error messages will be displayed here -->
+            </div>
+        </main>
+
+        <footer>
+            <p class="info-text">
+                <strong>Supported formats:</strong> PDF, TXT | 
+                <strong>Max size:</strong> 16MB
+            </p>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
