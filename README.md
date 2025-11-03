@@ -106,67 +106,73 @@ Copy code
 
 ---
 
-## 💻 Local Setup
-
-### 1. Clone Repository
-```bash
+💻 Local Setup
+1. Clone Repository
 git clone https://github.com/<yourusername>/resume_app.git
 cd resume_app
+
 2. Create and Activate Virtual Environment
-bash
-Copy code
 python -m venv venv
-.\venv\Scripts\activate        # Windows
-source venv/bin/activate       # Mac/Linux
+# For Windows
+.\venv\Scripts\activate
+# For Mac/Linux
+source venv/bin/activate
+
 3. Install Dependencies
-bash
-Copy code
 pip install -r requirements.txt
+
 4. Run the App
-bash
-Copy code
 python app.py
+
 5. Access Locally
-Visit http://127.0.0.1:5000/ in your browser.
+
+Visit 👉 http://127.0.0.1:5000/
+ in your browser.
 
 🧬 Model Training Summary
 Model	Technique	Purpose
 Job Category	TF-IDF + Logistic Regression	Classify resume into job domain
 Semantic Matching	SentenceTransformer (all-MiniLM-L6-v2)	Compare resumes and job descriptions
 Salary Prediction	Linear Regression	Predict salary based on dataset trends
-
 🔮 Future Enhancements
+
 Add Job Description Input to compare directly with uploaded resumes
 
 Integrate LLMs (Claude, GPT-4, Gemini) for improved skill extraction
 
-Build a Resume Scoring System (e.g., ATS Compatibility, Skill Gaps)
+Build a Resume Scoring System (ATS compatibility, skill gap detection)
 
 Create Dashboard Analytics for job-market visualization
 
 Deploy to Render / Vercel / Railway for cloud access
 
 ⚡ Performance Tips
-Use smaller SentenceTransformer models (MiniLM) for faster inference
 
-Cache embeddings for frequent job descriptions
+Use smaller SentenceTransformer models (e.g., MiniLM) for faster inference
+
+Cache embeddings for frequently used job descriptions
 
 For large datasets, pre-compute embeddings offline
 
-Use threaded=True in Flask app for better concurrency
+Run Flask with threaded=True for better concurrency
 
 📜 License
-This project is licensed under the MIT License – free for personal, academic, or commercial modification.
+
+This project is licensed under the MIT License — free for personal, academic, or commercial use and modification.
 
 🤝 Contributing
+
 Pull requests are welcome!
-If you want to improve model accuracy or UI/UX, fork the repo and submit a PR.
+If you'd like to improve model accuracy or UI/UX, fork the repo and submit a PR.
 
 👨‍💻 Author
+
 Vutikuri Shanmukha
 AI Developer & Researcher
 📧 [Your Email Here]
-🔗 LinkedIn | GitHub
+🔗 LinkedIn
+ | GitHub
 
 🌟 Star This Repo
-If this project helped you, consider starring it ⭐ on GitHub — it helps others discover it and supports continued development.
+
+If this project helped you, consider giving it a ⭐ on GitHub — it helps others discover it and supports continued development.
