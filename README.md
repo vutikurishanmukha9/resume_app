@@ -107,72 +107,138 @@ Copy code
 ---
 
 💻 Local Setup
-1. Clone Repository
-git clone https://github.com/<yourusername>/resume_app.git
-cd resume_app
 
-2. Create and Activate Virtual Environment
+**1. Clone Repository**
+
+git clone https://github.com/<yourusername>/resume\_app.git
+
+cd resume\_app
+
+
+
+**2. Create and Activate Virtual Environment**
+
 python -m venv venv
-# For Windows
-.\venv\Scripts\activate
-# For Mac/Linux
+
+\# For Windows
+
+.\\venv\\Scripts\\activate
+
+\# For Mac/Linux
+
 source venv/bin/activate
 
-3. Install Dependencies
+
+
+**3. Install Dependencies**
+
 pip install -r requirements.txt
 
-4. Run the App
+
+
+**4. Run the App**
+
 python app.py
 
-5. Access Locally
+
+
+**5. Access Locally**
+
+
 
 Visit 👉 http://127.0.0.1:5000/
- in your browser.
 
-🧬 Model Training Summary
+&nbsp;in your browser.
+
+
+
+**🧬 Model Training Summary**
+
 Model	Technique	Purpose
+
 Job Category	TF-IDF + Logistic Regression	Classify resume into job domain
+
 Semantic Matching	SentenceTransformer (all-MiniLM-L6-v2)	Compare resumes and job descriptions
+
 Salary Prediction	Linear Regression	Predict salary based on dataset trends
-🔮 Future Enhancements
 
-Add Job Description Input to compare directly with uploaded resumes
 
-Integrate LLMs (Claude, GPT-4, Gemini) for improved skill extraction
 
-Build a Resume Scoring System (ATS compatibility, skill gap detection)
+**🔮 Future Enhancements**
 
-Create Dashboard Analytics for job-market visualization
 
-Deploy to Render / Vercel / Railway for cloud access
 
-⚡ Performance Tips
+* Add Job Description Input to compare directly with uploaded resumes
 
-Use smaller SentenceTransformer models (e.g., MiniLM) for faster inference
 
-Cache embeddings for frequently used job descriptions
 
-For large datasets, pre-compute embeddings offline
+* Integrate LLMs (Claude, GPT-4, Gemini) for improved skill extraction
 
-Run Flask with threaded=True for better concurrency
 
-📜 License
+
+* Build a Resume Scoring System (ATS compatibility, skill gap detection)
+
+
+
+* Create Dashboard Analytics for job-market visualization
+
+
+
+* Deploy to Render / Vercel / Railway for cloud access
+
+
+
+**⚡ Performance Tips**
+
+
+
+* Use smaller SentenceTransformer models (e.g., MiniLM) for faster inference
+* 
+* Cache embeddings for frequently used job descriptions
+* 
+* For large datasets, pre-compute embeddings offline
+* 
+* Run Flask with threaded=True for better concurrency
+
+
+
+**📜 License**
+
+
 
 This project is licensed under the MIT License — free for personal, academic, or commercial use and modification.
 
-🤝 Contributing
+
+
+**🤝 Contributing**
+
+
 
 Pull requests are welcome!
+
 If you'd like to improve model accuracy or UI/UX, fork the repo and submit a PR.
 
-👨‍💻 Author
+
+
+**👨‍💻 Author**
+
+
 
 Vutikuri Shanmukha
-AI Developer & Researcher
-📧 [Your Email Here]
-🔗 LinkedIn
- | GitHub
 
-🌟 Star This Repo
+AI Developer \& Researcher
+
+📧 \[Your Email Here]
+
+🔗 LinkedIn
+
+&nbsp;| GitHub
+
+
+
+**🌟 Star This Repo**
+
+
 
 If this project helped you, consider giving it a ⭐ on GitHub — it helps others discover it and supports continued development.
+
