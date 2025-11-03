@@ -228,9 +228,6 @@ Vutikuri Shanmukha
 
 AI Developer \& Researcher
 
-📧 \[Your Email Here]
-
-🔗 LinkedIn
 
 &nbsp;| GitHub
 
