@@ -193,11 +193,11 @@ Salary Prediction	Linear Regression	Predict salary based on dataset trends
 
 
 * Use smaller SentenceTransformer models (e.g., MiniLM) for faster inference
-* 
+
 * Cache embeddings for frequently used job descriptions
-* 
+ 
 * For large datasets, pre-compute embeddings offline
-* 
+ 
 * Run Flask with threaded=True for better concurrency
 
 
