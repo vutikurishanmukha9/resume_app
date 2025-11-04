@@ -5,8 +5,8 @@
 [![scikit-learn](https://img.shields.io/badge/ML-Library-scikit--learn-orange.svg)](https://scikit-learn.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-An AI-driven web application that analyzes resumes, predicts ideal job roles, matches job descriptions, and estimates salary ranges — all powered by machine learning and natural language processing (NLP).
-Think of it as your personal career analyst — intelligent, fast, and open-source.
+An AI-driven web application that analyzes resumes, predicts ideal job roles, matches job descriptions, and estimates salary ranges all powered by machine learning and natural language processing (NLP).
+Think of it as your personal career analyst intelligent, fast, and open-source.
 
 **🚀 Overview**
 
@@ -24,10 +24,20 @@ It’s simple, interpretable, and lightning-fast — perfect for students, recru
 **🧠 Core Features**
 
 ✅ Smart Resume Understanding – Extracts meaningful information (skills, roles, tools) from resume text or PDFs.
+
+
 ✅ Job Role Prediction – Uses trained ML models to classify resumes into the right job category.
+
+
 ✅ Semantic Job Matching – Compares your resume with real-world job descriptions using all-MiniLM-L6-v2.
+
+
 ✅ Salary Estimation – Predicts salary ranges based on skills and domain trends.
+
+
 ✅ Web Interface – Clean, responsive UI built with HTML, CSS, and JS.
+
+
 ✅ Customizable Models – Retrain or fine-tune models for specific industries or geographies.
 
 **⚙️ Architecture**
