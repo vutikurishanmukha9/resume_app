@@ -9,7 +9,7 @@ import PyPDF2
 import logging
 import pickle
 from contextlib import contextmanager
-from typing import Tuple, List, Optional
+from typing import Tuple, List, Dict, Any
 import traceback
 
 # -------------------- CONFIGURATION --------------------
@@ -29,24 +29,24 @@ MAX_TEXT_LENGTH = 5000
 MAX_PDF_PAGES = 5
 TOP_MATCHES = 3
 EMBEDDING_CACHE_FILE = "job_embeddings_cache.pkl"
+MIN_TEXT_LENGTH = 50  # Minimum text length for valid resume
 
 
 # -------------------- MODEL MANAGER --------------------
 class ModelManager:
-    """Centralized model management with caching and singleton pattern"""
-    
+    """Centralized model management with caching and error handling"""
     _instance = None
-    
+
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super(ModelManager, cls).__new__(cls)
             cls._instance._initialized = False
         return cls._instance
-    
+
     def __init__(self):
         if self._initialized:
             return
-            
+
         self.resume_classifier = None
         self.salary_model = None
         self.job_df = None
@@ -55,16 +55,16 @@ class ModelManager:
         self._models_loaded = False
         self._initialized = True
 
-    def load_models(self) -> None:
-        """Load all models and precompute embeddings"""
+    def load_models(self):
+        """Load all ML models with comprehensive error handling"""
         if self._models_loaded:
             logger.info("Models already loaded, skipping...")
             return
-            
+
         try:
             logger.info("Loading models...")
 
-            # Load trained classifier
+            # Load classifier
             if not os.path.exists("job_classifier.pkl"):
                 raise FileNotFoundError("job_classifier.pkl not found")
             self.resume_classifier = joblib.load("job_classifier.pkl")
@@ -81,215 +81,228 @@ class ModelManager:
                 raise FileNotFoundError("job_title_des.csv not found")
             self.job_df = pd.read_csv("job_title_des.csv")
             
-            # Validate required columns
-            if 'Job Description' not in self.job_df.columns:
-                raise ValueError("job_title_des.csv must contain 'Job Description' column")
-            if 'Job Title' not in self.job_df.columns:
-                raise ValueError("job_title_des.csv must contain 'Job Title' column")
-                
-            logger.info(f"✅ Job dataset loaded: {len(self.job_df)} jobs")
+            # Validate dataset columns
+            required_columns = ['Job Description', 'Job Title']
+            if not all(col in self.job_df.columns for col in required_columns):
+                raise ValueError(f"Dataset must contain {required_columns} columns")
+            
+            # Remove any rows with missing critical data
+            self.job_df = self.job_df.dropna(subset=required_columns)
+            logger.info(f"✅ Job dataset loaded with {len(self.job_df)} entries")
 
             # Load embedding model
             self.embed_model = SentenceTransformer('all-MiniLM-L6-v2')
             self.embed_model.max_seq_length = 256
-            logger.info("✅ Embedding model loaded")
+            logger.info("✅ Sentence Transformer model loaded")
 
-            # Precompute job embeddings
+            # Precompute embeddings
             self.precompute_job_embeddings()
 
             self._models_loaded = True
-            logger.info("✅ All models loaded successfully")
+            logger.info("✅ All models successfully initialized")
 
         except FileNotFoundError as e:
-            logger.error(f"❌ Model file not found: {e}")
-            raise
+            logger.error(f"Required file missing: {e}")
+            raise RuntimeError(f"Model initialization failed: {e}")
         except Exception as e:
-            logger.error(f"❌ Error loading models: {e}")
+            logger.error(f"Model loading failed: {e}")
             logger.error(traceback.format_exc())
+            raise RuntimeError(f"Failed to initialize models: {str(e)}")
+
+    def precompute_job_embeddings(self):
+        """Precompute embeddings for job descriptions with validation"""
+        try:
+            # Try to load cached embeddings
+            if os.path.exists(EMBEDDING_CACHE_FILE):
+                try:
+                    with open(EMBEDDING_CACHE_FILE, 'rb') as f:
+                        self.job_embeddings = pickle.load(f)
+                    
+                    # Validate cache matches current dataset
+                    if len(self.job_embeddings) == len(self.job_df):
+                        logger.info("✅ Loaded cached job embeddings")
+                        return
+                    else:
+                        logger.warning("Cache size mismatch, recomputing embeddings...")
+                except Exception as e:
+                    logger.warning(f"Cache load failed: {e}, recomputing embeddings...")
+
+            # Compute new embeddings
+            job_descriptions = self.job_df['Job Description'].fillna('').tolist()
+            
+            if not job_descriptions:
+                raise ValueError("No job descriptions found in dataset")
+            
+            logger.info(f"Computing embeddings for {len(job_descriptions)} job descriptions...")
+            self.job_embeddings = self.embed_model.encode(
+                job_descriptions, 
+                convert_to_tensor=True, 
+                show_progress_bar=True,
+                batch_size=32
+            )
+            
+            # Cache the embeddings
+            with open(EMBEDDING_CACHE_FILE, 'wb') as f:
+                pickle.dump(self.job_embeddings, f)
+            logger.info("✅ Job embeddings computed and cached")
+            
+        except Exception as e:
+            logger.error(f"Failed to compute embeddings: {e}")
             raise
 
-    def precompute_job_embeddings(self) -> None:
-        """Precompute and cache job embeddings"""
-        try:
-            if os.path.exists(EMBEDDING_CACHE_FILE):
-                logger.info("Loading cached job embeddings...")
-                with open(EMBEDDING_CACHE_FILE, 'rb') as f:
-                    self.job_embeddings = pickle.load(f)
-                
-                # Validate cache size matches dataset
-                if len(self.job_embeddings) != len(self.job_df):
-                    logger.warning("Cache size mismatch, recomputing embeddings...")
-                    self._compute_and_cache_embeddings()
-                else:
-                    logger.info("✅ Cached job embeddings loaded")
-            else:
-                self._compute_and_cache_embeddings()
-                
-        except Exception as e:
-            logger.error(f"❌ Error loading cached embeddings: {e}")
-            logger.info("Recomputing embeddings...")
-            self._compute_and_cache_embeddings()
-
-    def _compute_and_cache_embeddings(self) -> None:
-        """Helper to compute and save embeddings"""
-        logger.info("Computing new job embeddings...")
-        job_descriptions = self.job_df['Job Description'].fillna('').tolist()
-
-        if not job_descriptions:
-            raise ValueError("No job descriptions found in dataset")
-
-        self.job_embeddings = self.embed_model.encode(
-            job_descriptions,
-            convert_to_tensor=True,
-            show_progress_bar=True,
-            batch_size=32
-        )
-
-        with open(EMBEDDING_CACHE_FILE, 'wb') as f:
-            pickle.dump(self.job_embeddings, f)
-
-        logger.info("✅ Job embeddings computed and cached")
-
-    def is_loaded(self) -> bool:
-        """Check if all models are loaded"""
+    def is_loaded(self):
+        """Check if models are loaded"""
         return self._models_loaded
 
 
-# Initialize model manager (singleton)
 model_manager = ModelManager()
 
 
-# -------------------- CONTEXT MANAGERS --------------------
+# -------------------- CONTEXT & HELPERS --------------------
 @contextmanager
-def temporary_file(file_path: str):
-    """Context manager for temporary file cleanup"""
+def temporary_file(file_path):
+    """Temporary file cleanup context manager"""
     try:
         yield file_path
     finally:
-        if os.path.exists(file_path):
-            try:
+        try:
+            if os.path.exists(file_path):
                 os.remove(file_path)
-                logger.info(f"Deleted temporary file: {os.path.basename(file_path)}")
-            except Exception as e:
-                logger.error(f"Failed to delete file {file_path}: {e}")
+        except Exception as e:
+            logger.warning(f"Failed to delete temporary file {file_path}: {e}")
 
 
-# -------------------- HELPER FUNCTIONS --------------------
 def allowed_file(filename: str) -> bool:
-    """Check if file extension is allowed"""
+    """Check if file has allowed extension"""
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
 
 
 def extract_text_from_pdf(file_path: str) -> str:
-    """Extract text from PDF file with improved error handling"""
+    """Extract text from PDF file with error handling"""
     try:
         text = ""
-        with open(file_path, "rb") as f:
+        with open(file_path, 'rb') as f:
             reader = PyPDF2.PdfReader(f)
             num_pages = min(len(reader.pages), MAX_PDF_PAGES)
             
-            if num_pages == 0:
-                raise ValueError("PDF has no readable pages")
-            
-            for page_num in range(num_pages):
+            for i in range(num_pages):
                 try:
-                    page = reader.pages[page_num]
-                    content = page.extract_text()
+                    content = reader.pages[i].extract_text()
                     if content:
                         text += content + "\n"
                 except Exception as e:
-                    logger.warning(f"Error extracting page {page_num + 1}: {e}")
+                    logger.warning(f"Failed to extract text from page {i+1}: {e}")
                     continue
         
-        extracted_text = text.strip()
-        if not extracted_text:
-            raise ValueError("No text could be extracted from PDF")
-            
-        return extracted_text[:MAX_TEXT_LENGTH]
+        extracted = text.strip()[:MAX_TEXT_LENGTH]
+        
+        if len(extracted) < MIN_TEXT_LENGTH:
+            raise ValueError("Insufficient text extracted from PDF. Please ensure the PDF contains readable text.")
+        
+        return extracted
         
     except PyPDF2.errors.PdfReadError as e:
-        logger.error(f"PDF read error: {e}")
-        raise ValueError("Invalid or corrupted PDF file")
+        raise ValueError(f"Invalid or corrupted PDF file: {str(e)}")
     except Exception as e:
-        logger.error(f"Error extracting PDF text: {e}")
-        raise ValueError(f"Unable to extract text from PDF: {str(e)}")
+        raise ValueError(f"Failed to process PDF: {str(e)}")
 
 
 def extract_text_from_file(file_path: str, filename: str) -> str:
-    """Handle PDF or TXT extraction with validation"""
-    if not os.path.exists(file_path):
-        raise FileNotFoundError(f"File not found: {file_path}")
+    """Extract text from PDF or TXT file with validation"""
+    ext = filename.rsplit('.', 1)[-1].lower()
     
-    file_ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else ''
-    
-    if file_ext == 'pdf':
-        return extract_text_from_pdf(file_path)
-    elif file_ext == 'txt':
-        try:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                content = f.read().strip()
-                if not content:
-                    raise ValueError("Text file is empty")
-                return content[:MAX_TEXT_LENGTH]
-        except UnicodeDecodeError:
-            # Try with different encoding
-            with open(file_path, 'r', encoding='latin-1') as f:
-                content = f.read().strip()
-                if not content:
-                    raise ValueError("Text file is empty")
-                return content[:MAX_TEXT_LENGTH]
-    else:
-        raise ValueError(f"Unsupported file format: {file_ext}")
-
-
-def analyze_resume(resume_text: str) -> Tuple[str, List[Tuple[str, float]], float]:
-    """
-    Analyze resume and return predictions.
-    
-    Returns:
-        Tuple of (predicted_job, matches, predicted_salary)
-    """
     try:
-        if not resume_text or len(resume_text.strip()) == 0:
-            raise ValueError("Resume text is empty")
+        if ext == 'pdf':
+            return extract_text_from_pdf(file_path)
+        elif ext == 'txt':
+            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                content = f.read().strip()[:MAX_TEXT_LENGTH]
+                
+            if len(content) < MIN_TEXT_LENGTH:
+                raise ValueError("Text file is too short. Please provide a resume with at least 50 characters.")
+            
+            return content
+        else:
+            raise ValueError("Unsupported file type")
+    except UnicodeDecodeError:
+        raise ValueError("Failed to read text file. Please ensure it's a valid UTF-8 encoded text file.")
 
-        # Ensure models are loaded
-        if not model_manager.is_loaded():
-            raise RuntimeError("Models not loaded")
 
-        # ---- Predict Job Title ----
+# -------------------- CORE ANALYSIS --------------------
+def analyze_resume(resume_text: str) -> Tuple[str, List[Tuple[str, float]], float]:
+    """Predict job, matches, and salary with error handling"""
+    try:
+        # Validate input
+        if not resume_text or len(resume_text.strip()) < MIN_TEXT_LENGTH:
+            raise ValueError("Resume text is too short for analysis")
+        
+        # Predict job category
         predicted_job = model_manager.resume_classifier.predict([resume_text])[0]
-        logger.info(f"Predicted job: {predicted_job}")
 
-        # ---- Semantic Matching ----
+        # Generate resume embedding
         resume_embed = model_manager.embed_model.encode(
-            [resume_text],
-            convert_to_tensor=True,
-            show_progress_bar=False
+            [resume_text], 
+            convert_to_tensor=True
         )
-
+        
+        # Calculate cosine similarities
         cosine_scores = util.cos_sim(resume_embed, model_manager.job_embeddings)
         top_indices = np.argsort(-cosine_scores[0].cpu().numpy())[:TOP_MATCHES]
 
+        # Get top matches
         matches = []
         for idx in top_indices:
-            if idx < len(model_manager.job_df):
+            try:
                 job_title = model_manager.job_df.iloc[idx]['Job Title']
                 score = float(cosine_scores[0][idx])
                 matches.append((job_title, score))
+            except Exception as e:
+                logger.warning(f"Failed to process match at index {idx}: {e}")
+                continue
 
-        # ---- Predict Salary ----
-        # Note: Using dummy feature [[10]] - you may want to improve this
+        # Predict salary (using dummy input for now as per original logic)
         predicted_salary = float(model_manager.salary_model.predict(np.array([[10]]))[0])
-        logger.info(f"Predicted salary: ₹{int(predicted_salary):,}")
-
+        
         return predicted_job, matches, predicted_salary
-
+        
     except Exception as e:
-        logger.error(f"Error analyzing resume: {e}")
-        logger.error(traceback.format_exc())
-        raise
+        logger.error(f"Resume analysis failed: {e}")
+        raise ValueError(f"Failed to analyze resume: {str(e)}")
+
+
+def calculate_jd_resume_match(resume_text: str, jd_text: str) -> float:
+    """Calculate resume-JD match percentage with validation"""
+    try:
+        # Validate inputs
+        resume_text = resume_text.strip()
+        jd_text = jd_text.strip()
+        
+        if not resume_text or len(resume_text) < MIN_TEXT_LENGTH:
+            raise ValueError("Resume text is too short for matching")
+        
+        if not jd_text or len(jd_text) < 20:
+            raise ValueError("Job description is too short for matching")
+        
+        # Generate embeddings
+        resume_embedding = model_manager.embed_model.encode(
+            resume_text, 
+            convert_to_tensor=True
+        )
+        jd_embedding = model_manager.embed_model.encode(
+            jd_text, 
+            convert_to_tensor=True
+        )
+        
+        # Calculate similarity
+        similarity_score = util.cos_sim(resume_embedding, jd_embedding).item()
+        
+        # Convert to percentage and round
+        return round(max(0, min(100, similarity_score * 100)), 2)
+        
+    except Exception as e:
+        logger.error(f"JD matching failed: {e}")
+        raise ValueError(f"Failed to calculate match: {str(e)}")
 
 
 # -------------------- ROUTES --------------------
@@ -297,6 +310,115 @@ def analyze_resume(resume_text: str) -> Tuple[str, List[Tuple[str, float]], floa
 def index():
     """Render main page"""
     return render_template('index.html')
+
+
+@app.route('/upload', methods=['POST'])
+def upload_resume():
+    """Handle resume upload and analysis"""
+    try:
+        # Check if models are loaded
+        if not model_manager.is_loaded():
+            return jsonify({'error': 'System is still initializing. Please try again.'}), 503
+
+        # Validate file presence
+        if 'resume' not in request.files:
+            return jsonify({'error': 'No file uploaded'}), 400
+        
+        file = request.files['resume']
+        
+        if not file or file.filename == '':
+            return jsonify({'error': 'No file selected'}), 400
+        
+        if not allowed_file(file.filename):
+            return jsonify({'error': 'Invalid file type. Only PDF and TXT files are allowed.'}), 400
+
+        # Secure filename
+        filename = secure_filename(file.filename)
+        if not filename:
+            return jsonify({'error': 'Invalid filename'}), 400
+        
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+
+        # Process file
+        with temporary_file(file_path):
+            file.save(file_path)
+            
+            # Extract text
+            resume_text = extract_text_from_file(file_path, filename)
+            
+            # Analyze resume
+            predicted_job, matches, salary = analyze_resume(resume_text)
+
+            return jsonify({
+                'success': True,
+                'predicted_job': predicted_job,
+                'matches': [{'title': t, 'score': f"{s:.3f}"} for t, s in matches],
+                'salary': f"₹{int(salary):,}"
+            }), 200
+
+    except ValueError as e:
+        logger.warning(f"Validation error: {e}")
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        logger.error(f"Upload error: {e}")
+        logger.error(traceback.format_exc())
+        return jsonify({'error': 'An unexpected error occurred. Please try again.'}), 500
+
+
+@app.route('/match_jd_resume', methods=['POST'])
+def match_jd_resume():
+    """Calculate resume-JD match percentage"""
+    try:
+        # Check if models are loaded
+        if not model_manager.is_loaded():
+            return jsonify({'error': 'System is still initializing. Please try again.'}), 503
+
+        # Get inputs
+        jd_text = request.form.get('jd_text', '').strip()
+        
+        if 'resume' not in request.files:
+            return jsonify({'error': 'No resume file uploaded'}), 400
+        
+        resume_file = request.files['resume']
+
+        if not jd_text:
+            return jsonify({'error': 'Please provide a job description'}), 400
+        
+        if not resume_file or resume_file.filename == '':
+            return jsonify({'error': 'Please upload a resume file'}), 400
+        
+        if not allowed_file(resume_file.filename):
+            return jsonify({'error': 'Invalid file type. Only PDF and TXT files are allowed.'}), 400
+
+        # Process file
+        filename = secure_filename(resume_file.filename)
+        if not filename:
+            return jsonify({'error': 'Invalid filename'}), 400
+        
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+
+        with temporary_file(file_path):
+            resume_file.save(file_path)
+            
+            # Extract text
+            resume_text = extract_text_from_file(file_path, filename)
+            
+            # Calculate match
+            match_percentage = calculate_jd_resume_match(resume_text, jd_text)
+
+            return jsonify({
+                'success': True,
+                'match_percentage': match_percentage,
+                'message': f"The resume matches {match_percentage}% with the job description"
+            }), 200
+
+    except ValueError as e:
+        logger.warning(f"Validation error in JD match: {e}")
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        logger.error(f"JD Match Error: {e}")
+        logger.error(traceback.format_exc())
+        return jsonify({'error': 'Failed to calculate match percentage. Please try again.'}), 500
 
 
 @app.route('/health', methods=['GET'])
@@ -308,138 +430,38 @@ def health_check():
     }), 200
 
 
-@app.route('/upload', methods=['POST'])
-def upload_resume():
-    """Handle resume upload and analysis"""
-    try:
-        # Validate request
-        if 'resume' not in request.files:
-            return jsonify({'error': 'No file provided'}), 400
-
-        file = request.files['resume']
-        
-        if file.filename == '':
-            return jsonify({'error': 'No file selected'}), 400
-            
-        if not allowed_file(file.filename):
-            return jsonify({
-                'error': 'Invalid file type. Only PDF and TXT files are allowed'
-            }), 400
-
-        # Ensure models are loaded
-        if not model_manager.is_loaded():
-            return jsonify({'error': 'Models not initialized'}), 503
-
-        # Save and process file
-        filename = secure_filename(file.filename)
-        if not filename:
-            return jsonify({'error': 'Invalid filename'}), 400
-            
-        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-
-        with temporary_file(file_path):
-            file.save(file_path)
-            logger.info(f"File saved: {filename}")
-
-            # Extract text
-            resume_text = extract_text_from_file(file_path, filename)
-            if not resume_text:
-                return jsonify({'error': 'No text extracted from file'}), 400
-
-            # Analyze resume
-            predicted_job, matches, salary = analyze_resume(resume_text)
-
-            # Format response
-            result = {
-                'success': True,
-                'predicted_job': predicted_job,
-                'matches': [
-                    {'title': title, 'score': f"{score:.3f}"}
-                    for title, score in matches
-                ],
-                'salary': f"₹{int(salary):,}"
-            }
-
-            return jsonify(result), 200
-
-    except ValueError as e:
-        logger.warning(f"Validation error: {e}")
-        return jsonify({'error': str(e)}), 400
-    except FileNotFoundError as e:
-        logger.error(f"File error: {e}")
-        return jsonify({'error': 'File processing error'}), 500
-    except Exception as e:
-        logger.error(f"Unexpected error: {e}")
-        logger.error(traceback.format_exc())
-        return jsonify({'error': 'Error processing resume. Please try again.'}), 500
-
-
-@app.route('/predict_text', methods=['POST'])
-def predict_text():
-    """Direct text prediction endpoint"""
-    try:
-        data = request.get_json()
-        
-        if not data:
-            return jsonify({'error': 'No JSON data provided'}), 400
-            
-        text = data.get("text", "").strip()
-        
-        if not text:
-            return jsonify({'error': 'Text field is empty'}), 400
-
-        if not model_manager.is_loaded():
-            return jsonify({'error': 'Models not initialized'}), 503
-
-        # Predict job
-        predicted_job = model_manager.resume_classifier.predict([text])[0]
-        
-        return jsonify({
-            'success': True,
-            'predicted_job': predicted_job
-        }), 200
-        
-    except Exception as e:
-        logger.error(f"Text prediction error: {e}")
-        logger.error(traceback.format_exc())
-        return jsonify({'error': 'Prediction failed. Please try again.'}), 500
-
-
 # -------------------- ERROR HANDLERS --------------------
 @app.errorhandler(413)
-def file_too_large(e):
-    """Handle file size exceeded"""
-    return jsonify({'error': 'File too large. Maximum size is 16MB'}), 413
-
-
-@app.errorhandler(500)
-def internal_error(e):
-    """Handle internal server errors"""
-    logger.error(f"Internal server error: {e}")
-    return jsonify({'error': 'Internal server error occurred'}), 500
+def request_entity_too_large(error):
+    """Handle file too large error"""
+    return jsonify({'error': 'File size exceeds 16MB limit'}), 413
 
 
 @app.errorhandler(404)
-def not_found(e):
+def not_found(error):
     """Handle 404 errors"""
     return jsonify({'error': 'Endpoint not found'}), 404
 
 
+@app.errorhandler(500)
+def internal_error(error):
+    """Handle 500 errors"""
+    logger.error(f"Internal server error: {error}")
+    return jsonify({'error': 'Internal server error'}), 500
+
+
 # -------------------- MAIN ENTRY --------------------
 if __name__ == '__main__':
-    # Create upload directory
+    # Create upload folder
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-    
-    # Load models before starting server
+
     try:
-        logger.info("Starting application...")
+        logger.info("🚀 Initializing AI Resume Analyzer...")
         model_manager.load_models()
-        logger.info("Application ready!")
+        logger.info("✅ System ready!")
     except Exception as e:
-        logger.error(f"Failed to load models: {e}")
+        logger.error(f"❌ Startup failed: {e}")
         logger.error(traceback.format_exc())
-        logger.error("Exiting due to initialization failure")
         exit(1)
-    
-    # Start Flask server
+
     app.run(debug=True, host='0.0.0.0', port=5000)
