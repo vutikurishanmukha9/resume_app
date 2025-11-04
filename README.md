@@ -90,16 +90,20 @@ resume_app/
 
 **💻 Local Setup**
 
-1. Clone the Repository
+## 💻 Local Setup
 
+### 1. Clone the Repository
+```bash
 git clone https://github.com/<yourusername>/resume_app.git
-
 cd resume_app
+
 
 
 **2. Create and Activate Virtual Environment**
 
+```bash
 python -m venv venv
+
 # For Windows
 venv\Scripts\activate
 # For Mac/Linux
