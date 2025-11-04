@@ -5,129 +5,95 @@
 [![scikit-learn](https://img.shields.io/badge/ML-Library-scikit--learn-orange.svg)](https://scikit-learn.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-An AI-powered web app that **analyzes resumes, predicts job roles, matches job descriptions, and estimates salaries** using a combination of **machine learning** and **natural language processing (NLP)**.  
-Designed for intelligent career insights — fast, interpretable, and lightweight.
+An AI-driven web application that analyzes resumes, predicts ideal job roles, matches job descriptions, and estimates salary ranges — all powered by machine learning and natural language processing (NLP).
+Think of it as your personal career analyst — intelligent, fast, and open-source.
 
----
+**🚀 Overview**
 
-## 🚀 Overview
+Resume Analyzer bridges the gap between your skills and the job market using data-driven intelligence.
+Built with Flask, scikit-learn, and Sentence Transformers, it performs three key functions:
 
-The **Resume Analyzer** is built using **Flask** for the backend and **HTML/CSS/JavaScript** for the frontend.  
-It performs three main tasks:
-1. **Predicts the best-fit job category** from your resume.
-2. **Finds semantically similar job descriptions** using sentence embeddings.
-3. **Estimates an expected salary range** using a trained regression model.
+🧩 Predicts your most likely job category from resume text or PDF.
 
-It’s like your personal career analyst — but instant and open-source.
+🔍 Finds semantically similar job descriptions using NLP embeddings.
 
----
+💰 Estimates an expected salary using regression-based modeling.
 
-## 🧩 Tech Stack
+It’s simple, interpretable, and lightning-fast — perfect for students, recruiters, and career platforms.
 
-| Layer | Technology |
-|-------|-------------|
-| **Frontend** | HTML5, CSS3, JavaScript |
-| **Backend** | Flask (Python) |
-| **ML/NLP Models** | scikit-learn, Sentence Transformers |
-| **Vectorization** | TF-IDF |
-| **Embedding Model** | all-MiniLM-L6-v2 |
-| **Data Handling** | pandas, numpy |
-| **Persistence** | joblib |
-| **PDF Parsing** | PyPDF2 |
-| **Environment** | Virtualenv (venv) |
-| **Version Control** | Git + GitHub |
+**🧠 Core Features**
 
----
+✅ Smart Resume Understanding – Extracts meaningful information (skills, roles, tools) from resume text or PDFs.
+✅ Job Role Prediction – Uses trained ML models to classify resumes into the right job category.
+✅ Semantic Job Matching – Compares your resume with real-world job descriptions using all-MiniLM-L6-v2.
+✅ Salary Estimation – Predicts salary ranges based on skills and domain trends.
+✅ Web Interface – Clean, responsive UI built with HTML, CSS, and JS.
+✅ Customizable Models – Retrain or fine-tune models for specific industries or geographies.
 
-## 🧠 Core Features
+**⚙️ Architecture**
+User → Resume Upload → Text Extraction → TF-IDF Vectorization
+     → Job Category Prediction → Semantic Similarity Matching
+     → Salary Estimation → Result Visualization (Frontend)
 
-- **Smart Resume Analysis:** Reads your resume text or PDF and extracts relevant skills & context.  
-- **Job Category Prediction:** Uses a Logistic Regression model trained on real job data.  
-- **Semantic Job Matching:** Leverages `SentenceTransformer` to match resumes with top job descriptions.  
-- **Salary Prediction:** Uses a trained Linear Regression model to estimate expected pay.  
-- **Fast Local Web App:** Simple Flask setup, runs locally with zero latency.  
-- **Easily Extendable:** Add your datasets or retrain models for custom job domains.
+**🧩 Tech Stack**
+Layer	Technology
+Frontend	HTML5, CSS3, JavaScript
+Backend	Flask (Python)
+ML/NLP Models	scikit-learn, Sentence Transformers
+Vectorization	TF-IDF
+Embedding Model	all-MiniLM-L6-v2
+PDF Parsing	PyPDF2
+Data Handling	pandas, numpy
+Persistence	joblib
+Version Control	Git + GitHub
+📊 Example Output
 
----
+**Input:**
 
-## ⚙️ How It Works
+“Python developer with 3+ years of experience in ML, data analysis, and Flask-based applications.”
 
-1. **Input Resume** (paste text or upload PDF)  
-2. **TF-IDF Vectorizer** encodes your resume  
-3. **Job Classifier** predicts the most probable category  
-4. **Sentence Transformer** compares semantic similarity with job descriptions  
-5. **Regression Model** estimates salary  
-6. **Frontend** displays results instantly
+Output:
 
----
+Prediction Type	Result
+Job Category	Data Scientist
+Top Matches	Machine Learning Engineer (0.67), Python Developer (0.66), Software Engineer (0.64)
+Estimated Salary	₹7,00,000 per annum
 
-## 🧪 Example Output
 
-**Input:**  
-> “Experienced Python developer with 3 years of experience in machine learning, data analysis, and building AI-driven systems using TensorFlow and Flask.”
-
-**Output:**
-Predicted Job Category: Data Science
-
-Top Job Matches:
-• Machine Learning — Similarity: 0.672
-• Django Developer — Similarity: 0.659
-• Software Engineer — Similarity: 0.657
-
-Estimated Salary: ₹700,117
-
-yaml
-Copy code
-
----
-
-## 📁 Project Structure
-
+📁 Project Structure
 resume_app/
-│
-├── app.py # Flask backend
+├── app.py                        # Flask backend
 ├── templates/
-│ └── index.html # Web interface
+│   └── index.html                # Main web interface
 ├── static/
-│ ├── style.css # Frontend styling
-│ └── script.js # JS logic
+│   ├── style.css                 # Frontend styling
+│   └── script.js                 # Frontend logic
 ├── models/
-│ ├── resume_classifier.pkl
-│ ├── tfidf_vectorizer.pkl
-│ └── salary_predictor.pkl
+│   ├── resume_classifier.pkl
+│   ├── tfidf_vectorizer.pkl
+│   └── salary_predictor.pkl
 ├── data/
-│ ├── job_title_des.csv
-│ └── Salary_Dataset_with_Extra_Features.csv
+│   ├── job_title_des.csv
+│   └── Salary_Dataset_with_Extra_Features.csv
 ├── requirements.txt
 └── README.md
 
-yaml
-Copy code
+**💻 Local Setup**
 
----
+1. Clone the Repository
 
-💻 Local Setup
+git clone https://github.com/<yourusername>/resume_app.git
 
-**1. Clone Repository**
-
-git clone https://github.com/<yourusername>/resume\_app.git
-
-cd resume\_app
-
+cd resume_app
 
 
 **2. Create and Activate Virtual Environment**
 
 python -m venv venv
-
-\# For Windows
-
-.\\venv\\Scripts\\activate
-
-\# For Mac/Linux
-
+# For Windows
+venv\Scripts\activate
+# For Mac/Linux
 source venv/bin/activate
-
 
 
 **3. Install Dependencies**
@@ -135,107 +101,61 @@ source venv/bin/activate
 pip install -r requirements.txt
 
 
-
 **4. Run the App**
 
 python app.py
 
 
+**5. Open in Browser**
 
-**5. Access Locally**
+http://127.0.0.1:5000
 
-
-
-Visit 👉 http://127.0.0.1:5000/
-
-&nbsp;in your browser.
-
-
-
-**🧬 Model Training Summary**
-
+**🧬 Model Summary**
 Model	Technique	Purpose
-
-Job Category	TF-IDF + Logistic Regression	Classify resume into job domain
-
-Semantic Matching	SentenceTransformer (all-MiniLM-L6-v2)	Compare resumes and job descriptions
-
-Salary Prediction	Linear Regression	Predict salary based on dataset trends
-
+Job Classifier	TF-IDF + Logistic Regression	Classify resume into job domain
+Semantic Matcher	SentenceTransformer (MiniLM-L6-v2)	Compare resumes & job descriptions
+Salary Predictor	Linear Regression	Estimate salary based on skillset
 
 
 **🔮 Future Enhancements**
 
+*🚧 Next Planned Features:*
 
+LLM integration (GPT-4, Claude, Gemini) for advanced skill and gap extraction
 
-* Add Job Description Input to compare directly with uploaded resumes
+Resume scoring & ATS compatibility report
 
+Dashboard with analytics and salary visualization
 
+Cloud deployment (Render, Railway, or Vercel)
 
-* Integrate LLMs (Claude, GPT-4, Gemini) for improved skill extraction
-
-
-
-* Build a Resume Scoring System (ATS compatibility, skill gap detection)
-
-
-
-* Create Dashboard Analytics for job-market visualization
-
-
-
-* Deploy to Render / Vercel / Railway for cloud access
-
-
+CSV export for resume analysis reports
 
 **⚡ Performance Tips**
 
+Use smaller embedding models for faster inference.
 
+Cache JD embeddings to avoid recomputation.
 
-* Use smaller SentenceTransformer models (e.g., MiniLM) for faster inference
+Pre-compute job description vectors for large datasets.
 
-* Cache embeddings for frequently used job descriptions
- 
-* For large datasets, pre-compute embeddings offline
- 
-* Run Flask with threaded=True for better concurrency
-
-
+Run Flask with threaded=True for better concurrency.
 
 **📜 License**
 
-
-
-This project is licensed under the MIT License — free for personal, academic, or commercial use and modification.
-
-
+This project is licensed under the MIT License — free for personal, academic, and commercial use.
 
 **🤝 Contributing**
 
-
-
-Pull requests are welcome!
-
-If you'd like to improve model accuracy or UI/UX, fork the repo and submit a PR.
-
-
+Contributions are always welcome!
+If you have ideas to improve model accuracy, UX, or performance — fork the repo, make changes, and open a PR.
 
 **👨‍💻 Author**
 
-
-
 Vutikuri Shanmukha
+AI Developer & Researcher
 
-AI Developer \& Researcher
+**🌟 Support**
 
-
-&nbsp;| GitHub
-
-
-
-**🌟 Star This Repo**
-
-
-
-If this project helped you, consider giving it a ⭐ on GitHub — it helps others discover it and supports continued development.
-
+If you find this project useful, please star ⭐ the repository —
+it helps others discover it and supports ongoing development!
