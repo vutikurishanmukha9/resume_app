@@ -13,7 +13,7 @@
         <header>
             <h1>🤖 AI Resume Analyzer</h1>
             <p class="subtitle">
-                Upload your resume to predict your best-fit job, estimated salary, and check how well it matches a Job Description.
+                Upload your resume to predict your best-fit job, estimated salary, and check how well it matches a Job Description with advanced AI-powered analysis.
             </p>
         </header>
 
@@ -47,10 +47,10 @@
                             id="jdText" 
                             name="jd_text" 
                             rows="6" 
-                            placeholder="Paste the complete Job Description here to check compatibility..."
+                            placeholder="Paste the complete Job Description here to get a detailed match analysis..."
                             aria-label="Paste job description"
                         ></textarea>
-                        <small class="help-text">Minimum 20 characters required for JD matching</small>
+                        <small class="help-text">💡 Tip: Include the full JD with requirements, skills, and responsibilities for best results</small>
                     </div>
 
                     <!-- Buttons -->
@@ -96,6 +96,9 @@
                 <strong>Max size:</strong> 16MB | 
                 <strong>AI Model:</strong> SentenceTransformer (MiniLM-L6-v2)
             </p>
+            <p class="info-text">
+                <strong>Match Algorithm:</strong> Multi-factor scoring (Semantic + Keywords + Skills + Context)
+            </p>
             <p class="privacy-note">
                 <small>Your resume is processed securely and not stored permanently on our servers.</small>
             </p>
@@ -103,7 +106,6 @@
     </div>
 
     <script>
-    // Frontend Script — Enhanced version with better error handling
     document.addEventListener('DOMContentLoaded', () => {
         const uploadForm = document.getElementById('uploadForm');
         const analyzeBtn = document.getElementById('analyzeBtn');
@@ -115,15 +117,14 @@
         const jdMatchResult = document.getElementById('jdMatchResult');
         const errorDiv = document.getElementById('error');
 
-        const MAX_FILE_SIZE = 16 * 1024 * 1024; // 16MB
+        const MAX_FILE_SIZE = 16 * 1024 * 1024;
         const ALLOWED_TYPES = ['application/pdf', 'text/plain'];
 
-        // Show selected filename with validation
+        // File input change handler
         fileInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
             
             if (file) {
-                // Validate file
                 const validation = validateFile(file);
                 
                 if (!validation.valid) {
@@ -134,7 +135,6 @@
                     return;
                 }
                 
-                // Display file info
                 fileName.textContent = `📎 ${file.name} (${formatFileSize(file.size)})`;
                 fileName.classList.add('active');
                 hideError();
@@ -144,7 +144,7 @@
             }
         });
 
-        // Handle Resume Analysis
+        // Resume Analysis Handler
         uploadForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
@@ -155,7 +155,6 @@
                 return;
             }
 
-            // Validate file
             const validation = validateFile(file);
             if (!validation.valid) {
                 showError(validation.error);
@@ -189,12 +188,11 @@
             }
         });
 
-        // Handle JD Match Check
+        // JD Match Handler
         matchBtn.addEventListener('click', async () => {
             const file = fileInput.files[0];
             const jdContent = jdText.value.trim();
 
-            // Validate inputs
             if (!file) {
                 showError('Please select a resume file first.');
                 return;
@@ -202,15 +200,16 @@
 
             if (!jdContent) {
                 showError('Please paste a Job Description to check the match.');
+                jdText.focus();
                 return;
             }
 
             if (jdContent.length < 20) {
                 showError('Job Description is too short. Please provide at least 20 characters.');
+                jdText.focus();
                 return;
             }
 
-            // Validate file
             const validation = validateFile(file);
             if (!validation.valid) {
                 showError(validation.error);
@@ -245,30 +244,18 @@
             }
         });
 
-        // Validate file
+        // Validation
         function validateFile(file) {
-            if (!file) {
-                return { valid: false, error: 'No file selected.' };
-            }
-
+            if (!file) return { valid: false, error: 'No file selected.' };
             if (file.size > MAX_FILE_SIZE) {
-                return { 
-                    valid: false, 
-                    error: 'File size exceeds 16MB limit. Please upload a smaller file.' 
-                };
+                return { valid: false, error: 'File size exceeds 16MB limit.' };
             }
-
             if (!ALLOWED_TYPES.includes(file.type)) {
-                return { 
-                    valid: false, 
-                    error: 'Invalid file type. Only PDF and TXT files are allowed.' 
-                };
+                return { valid: false, error: 'Invalid file type. Only PDF and TXT allowed.' };
             }
-
             return { valid: true };
         }
 
-        // Format file size
         function formatFileSize(bytes) {
             if (bytes === 0) return '0 Bytes';
             const k = 1024;
@@ -277,7 +264,7 @@
             return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
         }
 
-        // Display analysis results
+        // Display Results
         function displayResults(data) {
             let html = `
                 <h2>📋 Analysis Results</h2>
@@ -325,9 +312,11 @@
             resultDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
 
-        // Display JD match results
+        // Display JD Match with Breakdown
         function displayJDMatch(data) {
             const percentage = data.match_percentage;
+            const components = data.component_scores || {};
+            
             let matchLevel = '';
             let matchClass = '';
 
@@ -345,7 +334,7 @@
                 matchClass = 'low';
             }
 
-            const html = `
+            let html = `
                 <h2>📊 JD Match Analysis</h2>
                 <div class="match-card ${matchClass}">
                     <div class="match-percentage-large">${percentage}%</div>
@@ -359,12 +348,52 @@
                 </div>
             `;
 
+            // Add component breakdown if available
+            if (Object.keys(components).length > 0) {
+                html += `
+                    <div class="result-card">
+                        <h3>🔍 Detailed Score Breakdown</h3>
+                        <div class="component-scores">
+                `;
+
+                const componentLabels = {
+                    'semantic': '🧠 Semantic Similarity',
+                    'keyword': '🔑 Keyword Match',
+                    'skills': '⚡ Skills Match',
+                    'context': '📝 Contextual Match'
+                };
+
+                for (const [key, value] of Object.entries(components)) {
+                    const label = componentLabels[key] || key;
+                    html += `
+                        <div class="component-item">
+                            <div class="component-header">
+                                <span class="component-label">${label}</span>
+                                <span class="component-value">${value}%</span>
+                            </div>
+                            <div class="component-bar">
+                                <div class="component-bar-fill" style="width: ${value}%"></div>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                html += `
+                        </div>
+                        <p class="breakdown-note">
+                            <small>💡 The final score is calculated using weighted average: 
+                            Semantic (40%) + Keywords (30%) + Skills (20%) + Context (10%)</small>
+                        </p>
+                    </div>
+                `;
+            }
+
             jdMatchResult.innerHTML = html;
             jdMatchResult.style.display = 'block';
             jdMatchResult.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
 
-        // Set button loading state
+        // UI Controls
         function setButtonLoading(button, isLoading) {
             const btnText = button.querySelector('.btn-text');
             const btnLoader = button.querySelector('.btn-loader');
@@ -380,26 +409,22 @@
             }
         }
 
-        // Reset UI
         function resetUI() {
             resultDiv.style.display = 'none';
             jdMatchResult.style.display = 'none';
             errorDiv.style.display = 'none';
         }
 
-        // Show error
         function showError(msg) {
             errorDiv.innerHTML = `<strong>⚠️ Error:</strong> ${escapeHtml(msg)}`;
             errorDiv.style.display = 'block';
             errorDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
 
-        // Hide error
         function hideError() {
             errorDiv.style.display = 'none';
         }
 
-        // Escape HTML to prevent XSS
         function escapeHtml(text) {
             const map = {
                 '&': '&amp;',
@@ -411,7 +436,7 @@
             return String(text).replace(/[&<>"']/g, m => map[m]);
         }
 
-        // Drag and drop functionality
+        // Drag and drop
         const fileLabel = document.querySelector('.file-label');
 
         ['dragover', 'dragenter'].forEach(eventName => {

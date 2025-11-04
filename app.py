@@ -11,6 +11,8 @@ import pickle
 from contextlib import contextmanager
 from typing import Tuple, List, Dict, Any
 import traceback
+import re
+from collections import Counter
 
 # -------------------- CONFIGURATION --------------------
 logging.basicConfig(
@@ -29,7 +31,15 @@ MAX_TEXT_LENGTH = 5000
 MAX_PDF_PAGES = 5
 TOP_MATCHES = 3
 EMBEDDING_CACHE_FILE = "job_embeddings_cache.pkl"
-MIN_TEXT_LENGTH = 50  # Minimum text length for valid resume
+MIN_TEXT_LENGTH = 50
+
+# Matching weights for different components
+MATCHING_WEIGHTS = {
+    'semantic': 0.40,      # Semantic similarity
+    'keyword': 0.30,       # Keyword overlap
+    'skills': 0.20,        # Skills matching
+    'context': 0.10        # Contextual similarity
+}
 
 
 # -------------------- MODEL MANAGER --------------------
@@ -158,6 +168,111 @@ class ModelManager:
 model_manager = ModelManager()
 
 
+# -------------------- TEXT PROCESSING UTILITIES --------------------
+
+def extract_keywords(text: str, min_length: int = 3) -> List[str]:
+    """Extract meaningful keywords from text"""
+    # Convert to lowercase and remove special characters
+    text = re.sub(r'[^a-zA-Z0-9\s+#]', ' ', text.lower())
+    
+    # Common stop words to exclude
+    stop_words = {
+        'the', 'is', 'at', 'which', 'on', 'a', 'an', 'as', 'are', 'was', 'were',
+        'been', 'be', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would',
+        'could', 'should', 'may', 'might', 'must', 'can', 'this', 'that', 'these',
+        'those', 'i', 'you', 'he', 'she', 'it', 'we', 'they', 'what', 'who', 'when',
+        'where', 'why', 'how', 'all', 'each', 'every', 'both', 'few', 'more', 'most',
+        'other', 'some', 'such', 'no', 'nor', 'not', 'only', 'own', 'same', 'so',
+        'than', 'too', 'very', 'just', 'but', 'for', 'with', 'about', 'into', 'through',
+        'during', 'before', 'after', 'above', 'below', 'to', 'from', 'up', 'down', 'in',
+        'out', 'off', 'over', 'under', 'again', 'further', 'then', 'once', 'or', 'and'
+    }
+    
+    # Extract words
+    words = text.split()
+    keywords = [
+        word for word in words 
+        if len(word) >= min_length and word not in stop_words
+    ]
+    
+    return keywords
+
+
+def extract_skills(text: str) -> set:
+    """Extract technical skills and technologies from text"""
+    text_lower = text.lower()
+    
+    # Common technical skills and technologies
+    skill_patterns = [
+        # Programming Languages
+        r'\b(python|java|javascript|typescript|c\+\+|c#|ruby|php|swift|kotlin|go|rust|scala|r|matlab)\b',
+        
+        # Web Technologies
+        r'\b(html|css|react|angular|vue|node\.?js|express|django|flask|spring|asp\.net)\b',
+        
+        # Databases
+        r'\b(sql|mysql|postgresql|mongodb|redis|oracle|sqlite|cassandra|dynamodb)\b',
+        
+        # Cloud & DevOps
+        r'\b(aws|azure|gcp|docker|kubernetes|jenkins|terraform|ansible|git|github|gitlab)\b',
+        
+        # Data Science & ML
+        r'\b(machine learning|deep learning|tensorflow|pytorch|scikit-learn|pandas|numpy|matplotlib|nlp|computer vision)\b',
+        
+        # Other Technologies
+        r'\b(rest|api|microservices|agile|scrum|ci/cd|linux|unix|windows|bash|powershell)\b',
+        
+        # Soft Skills
+        r'\b(leadership|communication|problem solving|team work|analytical|project management)\b'
+    ]
+    
+    skills = set()
+    for pattern in skill_patterns:
+        matches = re.findall(pattern, text_lower)
+        skills.update(matches)
+    
+    return skills
+
+
+def calculate_keyword_overlap(resume_keywords: List[str], jd_keywords: List[str]) -> float:
+    """Calculate keyword overlap between resume and JD"""
+    if not jd_keywords:
+        return 0.0
+    
+    resume_counter = Counter(resume_keywords)
+    jd_counter = Counter(jd_keywords)
+    
+    # Calculate intersection
+    common_keywords = set(resume_counter.keys()) & set(jd_counter.keys())
+    
+    if not common_keywords:
+        return 0.0
+    
+    # Weight by frequency
+    overlap_score = sum(
+        min(resume_counter[kw], jd_counter[kw]) for kw in common_keywords
+    )
+    total_jd_keywords = sum(jd_counter.values())
+    
+    return min(100, (overlap_score / total_jd_keywords) * 100)
+
+
+def calculate_skills_match(resume_skills: set, jd_skills: set) -> float:
+    """Calculate skills matching percentage"""
+    if not jd_skills:
+        return 100.0  # If no specific skills in JD, give full score
+    
+    matching_skills = resume_skills & jd_skills
+    return (len(matching_skills) / len(jd_skills)) * 100
+
+
+def split_into_sentences(text: str) -> List[str]:
+    """Split text into sentences"""
+    # Simple sentence splitting
+    sentences = re.split(r'[.!?]+', text)
+    return [s.strip() for s in sentences if len(s.strip()) > 20]
+
+
 # -------------------- CONTEXT & HELPERS --------------------
 @contextmanager
 def temporary_file(file_path):
@@ -271,8 +386,11 @@ def analyze_resume(resume_text: str) -> Tuple[str, List[Tuple[str, float]], floa
         raise ValueError(f"Failed to analyze resume: {str(e)}")
 
 
-def calculate_jd_resume_match(resume_text: str, jd_text: str) -> float:
-    """Calculate resume-JD match percentage with validation"""
+def calculate_jd_resume_match(resume_text: str, jd_text: str) -> Tuple[float, Dict[str, float]]:
+    """
+    Enhanced JD-Resume matching with multiple scoring components
+    Returns: (final_score, component_scores)
+    """
     try:
         # Validate inputs
         resume_text = resume_text.strip()
@@ -284,7 +402,9 @@ def calculate_jd_resume_match(resume_text: str, jd_text: str) -> float:
         if not jd_text or len(jd_text) < 20:
             raise ValueError("Job description is too short for matching")
         
-        # Generate embeddings
+        component_scores = {}
+        
+        # 1. SEMANTIC SIMILARITY (40% weight)
         resume_embedding = model_manager.embed_model.encode(
             resume_text, 
             convert_to_tensor=True
@@ -293,12 +413,63 @@ def calculate_jd_resume_match(resume_text: str, jd_text: str) -> float:
             jd_text, 
             convert_to_tensor=True
         )
+        semantic_score = util.cos_sim(resume_embedding, jd_embedding).item() * 100
+        component_scores['semantic'] = semantic_score
         
-        # Calculate similarity
-        similarity_score = util.cos_sim(resume_embedding, jd_embedding).item()
+        # 2. KEYWORD OVERLAP (30% weight)
+        resume_keywords = extract_keywords(resume_text)
+        jd_keywords = extract_keywords(jd_text)
+        keyword_score = calculate_keyword_overlap(resume_keywords, jd_keywords)
+        component_scores['keyword'] = keyword_score
         
-        # Convert to percentage and round
-        return round(max(0, min(100, similarity_score * 100)), 2)
+        # 3. SKILLS MATCHING (20% weight)
+        resume_skills = extract_skills(resume_text)
+        jd_skills = extract_skills(jd_text)
+        skills_score = calculate_skills_match(resume_skills, jd_skills)
+        component_scores['skills'] = skills_score
+        
+        # 4. CONTEXTUAL SIMILARITY (10% weight)
+        # Compare sentence-level embeddings for better context
+        resume_sentences = split_into_sentences(resume_text)[:10]  # Top 10 sentences
+        jd_sentences = split_into_sentences(jd_text)[:10]
+        
+        if resume_sentences and jd_sentences:
+            resume_sent_embeds = model_manager.embed_model.encode(
+                resume_sentences, 
+                convert_to_tensor=True
+            )
+            jd_sent_embeds = model_manager.embed_model.encode(
+                jd_sentences, 
+                convert_to_tensor=True
+            )
+            
+            # Calculate max similarity for each JD sentence
+            similarities = util.cos_sim(jd_sent_embeds, resume_sent_embeds)
+            max_sims = similarities.max(dim=1).values
+            contextual_score = max_sims.mean().item() * 100
+        else:
+            contextual_score = semantic_score  # Fallback to semantic score
+        
+        component_scores['context'] = contextual_score
+        
+        # Calculate weighted final score
+        final_score = (
+            component_scores['semantic'] * MATCHING_WEIGHTS['semantic'] +
+            component_scores['keyword'] * MATCHING_WEIGHTS['keyword'] +
+            component_scores['skills'] * MATCHING_WEIGHTS['skills'] +
+            component_scores['context'] * MATCHING_WEIGHTS['context']
+        )
+        
+        # Ensure score is between 0 and 100
+        final_score = round(max(0, min(100, final_score)), 2)
+        
+        # Round component scores
+        for key in component_scores:
+            component_scores[key] = round(component_scores[key], 2)
+        
+        logger.info(f"Match scores - Final: {final_score}%, Components: {component_scores}")
+        
+        return final_score, component_scores
         
     except Exception as e:
         logger.error(f"JD matching failed: {e}")
@@ -367,7 +538,7 @@ def upload_resume():
 
 @app.route('/match_jd_resume', methods=['POST'])
 def match_jd_resume():
-    """Calculate resume-JD match percentage"""
+    """Calculate resume-JD match percentage with detailed breakdown"""
     try:
         # Check if models are loaded
         if not model_manager.is_loaded():
@@ -403,12 +574,13 @@ def match_jd_resume():
             # Extract text
             resume_text = extract_text_from_file(file_path, filename)
             
-            # Calculate match
-            match_percentage = calculate_jd_resume_match(resume_text, jd_text)
+            # Calculate match with detailed breakdown
+            match_percentage, component_scores = calculate_jd_resume_match(resume_text, jd_text)
 
             return jsonify({
                 'success': True,
                 'match_percentage': match_percentage,
+                'component_scores': component_scores,
                 'message': f"The resume matches {match_percentage}% with the job description"
             }), 200
 
