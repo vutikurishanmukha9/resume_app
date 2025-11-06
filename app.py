@@ -637,3 +637,565 @@ if __name__ == '__main__':
         exit(1)
 
     app.run(debug=True, host='0.0.0.0', port=5000)
+
+'''from flask import Flask, render_template, request, jsonify
+import joblib
+import numpy as np
+import pandas as pd
+from sentence_transformers import SentenceTransformer, util
+import os
+from werkzeug.utils import secure_filename
+import PyPDF2
+import logging
+import pickle
+import hashlib
+import time
+from contextlib import contextmanager
+from typing import Tuple, List, Dict, Any, Optional, Set
+import traceback
+import re
+from collections import Counter
+from functools import lru_cache
+
+# -------------------- CONFIGURATION --------------------
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+app = Flask(__name__)
+app.config['UPLOAD_FOLDER'] = 'uploads'
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB
+app.config['ALLOWED_EXTENSIONS'] = {'pdf', 'txt'}
+
+# Constants
+MAX_TEXT_LENGTH = 5000
+MAX_PDF_PAGES = 5
+TOP_MATCHES = 3
+EMBEDDING_CACHE_FILE = "job_embeddings_cache.pkl"
+EMBEDDING_HASH_FILE = "job_embeddings_hash.txt"
+MIN_TEXT_LENGTH = 50
+MIN_KEYWORD_LENGTH = 3
+MIN_SENTENCE_LENGTH = 20
+EMBEDDING_MAX_SEQ_LENGTH = 256
+EMBEDDING_BATCH_SIZE = 32
+
+# Matching weights for different components
+MATCHING_WEIGHTS = {
+    'semantic': 0.40,      # Semantic similarity
+    'keyword': 0.30,       # Keyword overlap
+    'skills': 0.20,        # Skills matching
+    'context': 0.10        # Contextual similarity
+}
+
+# Compile regex patterns once at module level for performance
+SKILL_PATTERNS = [
+    re.compile(r'\b(python|java|javascript|typescript|c\+\+|c#|ruby|php|swift|kotlin|go|rust|scala|r|matlab)\b', re.IGNORECASE),
+    re.compile(r'\b(html|css|react|angular|vue|node\.?js|express|django|flask|spring|asp\.net)\b', re.IGNORECASE),
+    re.compile(r'\b(sql|mysql|postgresql|mongodb|redis|oracle|sqlite|cassandra|dynamodb)\b', re.IGNORECASE),
+    re.compile(r'\b(aws|azure|gcp|docker|kubernetes|jenkins|terraform|ansible|git|github|gitlab)\b', re.IGNORECASE),
+    re.compile(r'\b(machine learning|deep learning|tensorflow|pytorch|scikit-learn|pandas|numpy|matplotlib|nlp|computer vision)\b', re.IGNORECASE),
+    re.compile(r'\b(rest|api|microservices|agile|scrum|ci/cd|linux|unix|windows|bash|powershell)\b', re.IGNORECASE),
+    re.compile(r'\b(leadership|communication|problem solving|team work|analytical|project management)\b', re.IGNORECASE)
+]
+
+# Stop words for keyword extraction
+STOP_WORDS = frozenset({
+    'the', 'is', 'at', 'which', 'on', 'a', 'an', 'as', 'are', 'was', 'were',
+    'been', 'be', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would',
+    'could', 'should', 'may', 'might', 'must', 'can', 'this', 'that', 'these',
+    'those', 'i', 'you', 'he', 'she', 'it', 'we', 'they', 'what', 'who', 'when',
+    'where', 'why', 'how', 'all', 'each', 'every', 'both', 'few', 'more', 'most',
+    'other', 'some', 'such', 'no', 'nor', 'not', 'only', 'own', 'same', 'so',
+    'than', 'too', 'very', 'just', 'but', 'for', 'with', 'about', 'into', 'through',
+    'during', 'before', 'after', 'above', 'below', 'to', 'from', 'up', 'down', 'in',
+    'out', 'off', 'over', 'under', 'again', 'further', 'then', 'once', 'or', 'and'
+})
+
+# -------------------- MODEL LOADER --------------------
+_embed_model_cache = {}
+
+def load_embed_model(quick_mode: bool = True) -> SentenceTransformer:
+    """
+    Load and cache embedding model dynamically.
+    quick_mode=True → all-MiniLM-L12-v2 (fast and balanced)
+    quick_mode=False → all-mpnet-base-v2 (high accuracy)
+    """
+    cache_key = f"quick_{quick_mode}"
+    
+    if cache_key in _embed_model_cache:
+        return _embed_model_cache[cache_key]
+    
+    if quick_mode:
+        logger.info("🧠 Loading embedding model: all-MiniLM-L12-v2 (Fast Mode)")
+        model = SentenceTransformer('all-MiniLM-L12-v2')
+    else:
+        logger.info("🧠 Loading embedding model: all-mpnet-base-v2 (Accuracy Mode)")
+        model = SentenceTransformer('all-mpnet-base-v2')
+
+    model.max_seq_length = EMBEDDING_MAX_SEQ_LENGTH
+    _embed_model_cache[cache_key] = model
+    return model
+
+
+# -------------------- MODEL MANAGER --------------------
+class ModelManager:
+    """Centralized model management with caching and error handling"""
+    _instance = None
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(ModelManager, cls).__new__(cls)
+            cls._instance._initialized = False
+        return cls._instance
+
+    def __init__(self):
+        if self._initialized:
+            return
+
+        self.resume_classifier: Optional[Any] = None
+        self.salary_model: Optional[Any] = None
+        self.job_df: Optional[pd.DataFrame] = None
+        self.embed_model: Optional[SentenceTransformer] = None
+        self.job_embeddings: Optional[Any] = None
+        self._models_loaded = False
+        self._initialized = True
+
+    def _compute_dataset_hash(self) -> str:
+        """Compute hash of job dataset to detect changes"""
+        try:
+            content = self.job_df[['Job Description', 'Job Title']].to_string()
+            return hashlib.md5(content.encode()).hexdigest()
+        except Exception as e:
+            logger.warning(f"Hash computation failed: {e}")
+            return ""
+
+    def _load_cached_hash(self) -> Optional[str]:
+        """Load previously saved dataset hash"""
+        try:
+            if os.path.exists(EMBEDDING_HASH_FILE):
+                with open(EMBEDDING_HASH_FILE, 'r') as f:
+                    return f.read().strip()
+        except Exception as e:
+            logger.warning(f"Failed to load hash file: {e}")
+        return None
+
+    def _save_hash(self, hash_value: str) -> None:
+        """Save dataset hash to file"""
+        try:
+            with open(EMBEDDING_HASH_FILE, 'w') as f:
+                f.write(hash_value)
+        except Exception as e:
+            logger.warning(f"Failed to save hash: {e}")
+
+    def load_models(self, quick_mode: bool = True) -> None:
+        """Load all ML models with comprehensive error handling"""
+        if self._models_loaded:
+            logger.info("Models already loaded, skipping...")
+            return
+
+        start_time = time.time()
+        
+        try:
+            logger.info("🔧 Loading models...")
+
+            # Load classifier
+            if not os.path.exists("job_classifier.pkl"):
+                raise FileNotFoundError("job_classifier.pkl not found")
+            self.resume_classifier = joblib.load("job_classifier.pkl")
+            logger.info("✅ Resume classifier loaded")
+
+            # Load salary predictor
+            if not os.path.exists("salary_predictor.pkl"):
+                raise FileNotFoundError("salary_predictor.pkl not found")
+            self.salary_model = joblib.load("salary_predictor.pkl")
+            logger.info("✅ Salary predictor loaded")
+
+            # Load job dataset
+            if not os.path.exists("job_title_des.csv"):
+                raise FileNotFoundError("job_title_des.csv not found")
+            self.job_df = pd.read_csv("job_title_des.csv")
+
+            # Validate dataset columns
+            required_columns = ['Job Description', 'Job Title']
+            missing_columns = [col for col in required_columns if col not in self.job_df.columns]
+            if missing_columns:
+                raise ValueError(f"Dataset missing required columns: {missing_columns}")
+
+            # Remove any rows with missing critical data
+            initial_rows = len(self.job_df)
+            self.job_df = self.job_df.dropna(subset=required_columns)
+            removed_rows = initial_rows - len(self.job_df)
+            
+            if removed_rows > 0:
+                logger.info(f"Removed {removed_rows} rows with missing data")
+            
+            if len(self.job_df) == 0:
+                raise ValueError("No valid job entries found in dataset")
+                
+            logger.info(f"✅ Job dataset loaded with {len(self.job_df)} entries")
+
+            # Load embedding model (Dynamic choice)
+            self.embed_model = load_embed_model(quick_mode)
+            logger.info("✅ Sentence Transformer model loaded")
+
+            # Precompute embeddings
+            self.precompute_job_embeddings()
+
+            self._models_loaded = True
+            elapsed = time.time() - start_time
+            logger.info(f"✅ All models successfully initialized in {elapsed:.2f}s")
+
+        except FileNotFoundError as e:
+            logger.error(f"Required file missing: {e}")
+            raise RuntimeError(f"Model initialization failed: {e}")
+        except ValueError as e:
+            logger.error(f"Data validation error: {e}")
+            raise RuntimeError(f"Model initialization failed: {e}")
+        except Exception as e:
+            logger.error(f"Model loading failed: {e}")
+            logger.error(traceback.format_exc())
+            raise RuntimeError(f"Failed to initialize models: {str(e)}")
+
+    def precompute_job_embeddings(self) -> None:
+        """Precompute embeddings for job descriptions with validation"""
+        try:
+            current_hash = self._compute_dataset_hash()
+            cached_hash = self._load_cached_hash()
+            
+            # Check if we can use cached embeddings
+            if os.path.exists(EMBEDDING_CACHE_FILE) and current_hash == cached_hash:
+                try:
+                    with open(EMBEDDING_CACHE_FILE, 'rb') as f:
+                        self.job_embeddings = pickle.load(f)
+                    if len(self.job_embeddings) == len(self.job_df):
+                        logger.info("✅ Loaded cached job embeddings (validated)")
+                        return
+                    else:
+                        logger.warning("Cache size mismatch, recomputing embeddings...")
+                except Exception as e:
+                    logger.warning(f"Cache load failed: {e}, recomputing embeddings...")
+            else:
+                if cached_hash != current_hash:
+                    logger.info("Dataset changed detected, recomputing embeddings...")
+
+            job_descriptions = self.job_df['Job Description'].fillna('').tolist()
+
+            if not job_descriptions:
+                raise ValueError("No job descriptions found in dataset")
+
+            logger.info(f"Computing embeddings for {len(job_descriptions)} job descriptions...")
+            self.job_embeddings = self.embed_model.encode(
+                job_descriptions,
+                convert_to_tensor=True,
+                show_progress_bar=True,
+                batch_size=EMBEDDING_BATCH_SIZE
+            )
+
+            # Save embeddings and hash
+            with open(EMBEDDING_CACHE_FILE, 'wb') as f:
+                pickle.dump(self.job_embeddings, f)
+            self._save_hash(current_hash)
+            
+            logger.info("✅ Job embeddings computed and cached")
+
+        except ValueError as e:
+            logger.error(f"Validation error: {e}")
+            raise
+        except Exception as e:
+            logger.error(f"Failed to compute embeddings: {e}")
+            logger.error(traceback.format_exc())
+            raise
+
+    def is_loaded(self) -> bool:
+        """Check if models are loaded"""
+        return self._models_loaded
+
+
+model_manager = ModelManager()
+
+# -------------------- TEXT PROCESSING UTILITIES --------------------
+def extract_keywords(text: str, min_length: int = MIN_KEYWORD_LENGTH) -> List[str]:
+    """Extract meaningful keywords from text"""
+    if not text or not isinstance(text, str):
+        return []
+    
+    text = re.sub(r'[^a-zA-Z0-9\s+#]', ' ', text.lower())
+    words = text.split()
+    keywords = [word for word in words if len(word) >= min_length and word not in STOP_WORDS]
+    return keywords
+
+
+def extract_skills(text: str) -> Set[str]:
+    """Extract technical skills and technologies from text"""
+    if not text or not isinstance(text, str):
+        return set()
+    
+    text_lower = text.lower()
+    skills = set()
+    
+    for pattern in SKILL_PATTERNS:
+        matches = pattern.findall(text_lower)
+        skills.update(matches)
+    
+    return skills
+
+
+def calculate_keyword_overlap(resume_keywords: List[str], jd_keywords: List[str]) -> float:
+    """Calculate keyword overlap between resume and JD"""
+    if not jd_keywords or not isinstance(jd_keywords, list):
+        return 0.0
+    
+    if not resume_keywords or not isinstance(resume_keywords, list):
+        return 0.0
+    
+    resume_counter = Counter(resume_keywords)
+    jd_counter = Counter(jd_keywords)
+    common_keywords = set(resume_counter) & set(jd_counter)
+    
+    if not common_keywords:
+        return 0.0
+    
+    overlap_score = sum(min(resume_counter[kw], jd_counter[kw]) for kw in common_keywords)
+    total_jd_keywords = sum(jd_counter.values())
+    
+    return min(100.0, (overlap_score / total_jd_keywords) * 100)
+
+
+def calculate_skills_match(resume_skills: Set[str], jd_skills: Set[str]) -> float:
+    """Calculate skills matching percentage"""
+    if not jd_skills or not isinstance(jd_skills, set):
+        return 100.0
+    
+    if not resume_skills or not isinstance(resume_skills, set):
+        return 0.0
+    
+    matching_skills = resume_skills & jd_skills
+    return (len(matching_skills) / len(jd_skills)) * 100
+
+
+def split_into_sentences(text: str) -> List[str]:
+    """Split text into sentences"""
+    if not text or not isinstance(text, str):
+        return []
+    
+    sentences = re.split(r'[.!?]+', text)
+    return [s.strip() for s in sentences if len(s.strip()) > MIN_SENTENCE_LENGTH]
+
+# -------------------- CONTEXT & HELPERS --------------------
+@contextmanager
+def temporary_file(file_path: str):
+    """Context manager for temporary file handling with proper cleanup"""
+    try:
+        yield file_path
+    finally:
+        try:
+            os.remove(file_path)
+        except FileNotFoundError:
+            pass  # File already deleted, that's fine
+        except PermissionError as e:
+            logger.warning(f"Permission denied deleting {file_path}: {e}")
+        except Exception as e:
+            logger.warning(f"Failed to delete temporary file {file_path}: {e}")
+
+
+def allowed_file(filename: str) -> bool:
+    """Check if file extension is allowed"""
+    if not filename or not isinstance(filename, str):
+        return False
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
+
+
+def extract_text_from_pdf(file_path: str) -> str:
+    """Extract text from PDF with improved performance and error handling"""
+    try:
+        text_parts = []
+        with open(file_path, 'rb') as f:
+            reader = PyPDF2.PdfReader(f)
+            num_pages = min(len(reader.pages), MAX_PDF_PAGES)
+            
+            for i in range(num_pages):
+                try:
+                    content = reader.pages[i].extract_text()
+                    if content:
+                        text_parts.append(content)
+                except Exception as e:
+                    logger.warning(f"Failed to extract text from page {i+1}: {e}")
+                    continue
+        
+        text = "\n".join(text_parts)
+        extracted = text.strip()[:MAX_TEXT_LENGTH]
+        
+        if len(extracted) < MIN_TEXT_LENGTH:
+            raise ValueError("Insufficient text extracted from PDF. Please ensure the PDF contains readable text.")
+        
+        return extracted
+        
+    except PyPDF2.errors.PdfReadError as e:
+        raise ValueError(f"Invalid or corrupted PDF file: {str(e)}")
+    except FileNotFoundError:
+        raise ValueError("PDF file not found")
+    except PermissionError:
+        raise ValueError("Permission denied reading PDF file")
+    except Exception as e:
+        raise ValueError(f"Failed to process PDF: {str(e)}")
+
+
+# -------------------- FLASK ROUTES --------------------
+@app.route('/')
+def index():
+    """Home page"""
+    return render_template('index.html')
+
+
+@app.route('/api/analyze', methods=['POST'])
+def analyze_resume():
+    """Analyze resume and predict job role"""
+    try:
+        if not model_manager.is_loaded():
+            return jsonify({'error': 'Models not loaded. Please restart the server.'}), 500
+        
+        # Check if file is present
+        if 'resume' not in request.files:
+            return jsonify({'error': 'No resume file provided'}), 400
+        
+        file = request.files['resume']
+        
+        if file.filename == '':
+            return jsonify({'error': 'No file selected'}), 400
+        
+        if not allowed_file(file.filename):
+            return jsonify({'error': 'Invalid file type. Only PDF and TXT files are allowed.'}), 400
+        
+        # Save file temporarily
+        filename = secure_filename(file.filename)
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        
+        # Ensure upload folder exists
+        os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+        file.save(filepath)
+        
+        # Extract text
+        with temporary_file(filepath):
+            if filename.endswith('.pdf'):
+                resume_text = extract_text_from_pdf(filepath)
+            else:
+                with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+                    resume_text = f.read()[:MAX_TEXT_LENGTH]
+            
+            if len(resume_text) < MIN_TEXT_LENGTH:
+                return jsonify({'error': 'Resume text too short. Please provide more content.'}), 400
+            
+            # Predict job role
+            predicted_role = model_manager.resume_classifier.predict([resume_text])[0]
+            confidence = max(model_manager.resume_classifier.predict_proba([resume_text])[0])
+            
+            # Predict salary
+            salary_prediction = model_manager.salary_model.predict([resume_text])[0]
+            
+            # Extract skills
+            skills = list(extract_skills(resume_text))
+            
+            return jsonify({
+                'predicted_role': predicted_role,
+                'confidence': float(confidence),
+                'predicted_salary': float(salary_prediction),
+                'extracted_skills': skills,
+                'resume_length': len(resume_text)
+            })
+    
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        logger.error(f"Analysis failed: {e}")
+        logger.error(traceback.format_exc())
+        return jsonify({'error': 'Internal server error during analysis'}), 500
+
+
+@app.route('/api/match', methods=['POST'])
+def match_job_description():
+    """Match resume against job descriptions"""
+    try:
+        if not model_manager.is_loaded():
+            return jsonify({'error': 'Models not loaded'}), 500
+        
+        data = request.get_json()
+        
+        if not data or 'resume_text' not in data:
+            return jsonify({'error': 'Resume text is required'}), 400
+        
+        resume_text = data['resume_text']
+        
+        if len(resume_text) < MIN_TEXT_LENGTH:
+            return jsonify({'error': 'Resume text too short'}), 400
+        
+        # Encode resume
+        resume_embedding = model_manager.embed_model.encode(resume_text, convert_to_tensor=True)
+        
+        # Calculate similarity
+        similarities = util.cos_sim(resume_embedding, model_manager.job_embeddings)[0]
+        
+        # Get top matches
+        top_indices = similarities.argsort(descending=True)[:TOP_MATCHES]
+        
+        matches = []
+        for idx in top_indices:
+            idx = idx.item()
+            matches.append({
+                'job_title': model_manager.job_df.iloc[idx]['Job Title'],
+                'similarity_score': float(similarities[idx]),
+                'job_description': model_manager.job_df.iloc[idx]['Job Description'][:200] + '...'
+            })
+        
+        return jsonify({'matches': matches})
+    
+    except Exception as e:
+        logger.error(f"Matching failed: {e}")
+        logger.error(traceback.format_exc())
+        return jsonify({'error': 'Internal server error during matching'}), 500
+
+
+@app.route('/api/health', methods=['GET'])
+def health_check():
+    """Health check endpoint"""
+    return jsonify({
+        'status': 'healthy',
+        'models_loaded': model_manager.is_loaded()
+    })
+
+
+# -------------------- ERROR HANDLERS --------------------
+@app.errorhandler(413)
+def request_entity_too_large(error):
+    """Handle file too large error"""
+    return jsonify({'error': 'File too large. Maximum size is 16MB.'}), 413
+
+
+@app.errorhandler(404)
+def not_found(error):
+    """Handle 404 errors"""
+    return jsonify({'error': 'Endpoint not found'}), 404
+
+
+@app.errorhandler(500)
+def internal_error(error):
+    """Handle 500 errors"""
+    logger.error(f"Internal server error: {error}")
+    return jsonify({'error': 'Internal server error'}), 500
+
+
+# -------------------- MAIN ENTRY --------------------
+if __name__ == '__main__':
+    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+    try:
+        mode = os.getenv("MODEL_MODE", "fast").lower()
+        quick_mode = mode == "fast"
+        logger.info(f"🚀 Initializing AI Resume Analyzer in {'FAST' if quick_mode else 'ACCURATE'} mode...")
+        model_manager.load_models(quick_mode)
+        logger.info("✅ System ready!")
+    except Exception as e:
+        logger.error(f"❌ Startup failed: {e}")
+        logger.error(traceback.format_exc())
+        exit(1)
+    app.run(debug=True, host='0.0.0.0', port=5000)'''

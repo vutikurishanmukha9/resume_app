@@ -19,7 +19,7 @@
 
         <main>
             <!-- Resume Upload & Analysis Section -->
-            <form id="uploadForm" enctype="multipart/form-data">
+            <form id="uploadForm" enctype="multipart/form-data" novalidate>
                 <div class="upload-section">
                     <!-- File Upload -->
                     <div class="file-input-wrapper">
@@ -30,12 +30,14 @@
                             accept=".pdf,.txt" 
                             required
                             aria-label="Upload resume file"
+                            aria-describedby="fileHelp"
                         >
-                        <label for="resumeFile" class="file-label">
-                            <span class="file-icon">📄</span>
+                        <label for="resumeFile" class="file-label" tabindex="0">
+                            <span class="file-icon" aria-hidden="true">📄</span>
                             <span class="file-text">Choose File (PDF or TXT)</span>
                         </label>
-                        <div id="fileName" class="file-name"></div>
+                        <div id="fileName" class="file-name" role="status" aria-live="polite"></div>
+                        <small id="fileHelp" class="visually-hidden">Upload a PDF or TXT file, maximum size 16MB</small>
                     </div>
 
                     <!-- Job Description Input -->
@@ -49,23 +51,24 @@
                             rows="6" 
                             placeholder="Paste the complete Job Description here to get a detailed match analysis..."
                             aria-label="Paste job description"
+                            aria-describedby="jdHelp"
                         ></textarea>
-                        <small class="help-text">💡 Tip: Include the full JD with requirements, skills, and responsibilities for best results</small>
+                        <small id="jdHelp" class="help-text">💡 Tip: Include the full JD with requirements, skills, and responsibilities for best results</small>
                     </div>
 
                     <!-- Buttons -->
                     <div class="button-group">
-                        <button type="submit" id="analyzeBtn" class="analyze-btn">
+                        <button type="submit" id="analyzeBtn" class="analyze-btn" aria-label="Analyze resume">
                             <span class="btn-text">🔍 Analyze Resume</span>
-                            <span class="btn-loader" style="display: none;">
+                            <span class="btn-loader" style="display: none;" aria-hidden="true">
                                 <span class="spinner"></span>
                                 Analyzing...
                             </span>
                         </button>
 
-                        <button type="button" id="matchBtn" class="match-btn">
+                        <button type="button" id="matchBtn" class="match-btn" aria-label="Check job description match">
                             <span class="btn-text">📊 Check JD Match</span>
-                            <span class="btn-loader" style="display: none;">
+                            <span class="btn-loader" style="display: none;" aria-hidden="true">
                                 <span class="spinner"></span>
                                 Checking...
                             </span>
@@ -75,12 +78,12 @@
             </form>
 
             <!-- Results Section -->
-            <div id="result" class="result-section" style="display: none;" role="region" aria-live="polite">
+            <div id="result" class="result-section" style="display: none;" role="region" aria-live="polite" aria-label="Analysis results">
                 <!-- Dynamic content from JavaScript -->
             </div>
 
             <!-- JD Match Result Section -->
-            <div id="jdMatchResult" class="jd-match-result" style="display: none;" role="region" aria-live="polite">
+            <div id="jdMatchResult" class="jd-match-result" style="display: none;" role="region" aria-live="polite" aria-label="Job description match results">
                 <!-- JD Match result will appear here -->
             </div>
 
@@ -94,380 +97,17 @@
             <p class="info-text">
                 <strong>Supported formats:</strong> PDF, TXT | 
                 <strong>Max size:</strong> 16MB | 
-                <strong>AI Model:</strong> SentenceTransformer (MiniLM-L6-v2)
+                <strong>AI Model:</strong> SentenceTransformer
             </p>
             <p class="info-text">
                 <strong>Match Algorithm:</strong> Multi-factor scoring (Semantic + Keywords + Skills + Context)
             </p>
             <p class="privacy-note">
-                <small>Your resume is processed securely and not stored permanently on our servers.</small>
+                <small>🔒 Your resume is processed securely and not stored permanently on our servers.</small>
             </p>
         </footer>
     </div>
 
-    <script>
-    document.addEventListener('DOMContentLoaded', () => {
-        const uploadForm = document.getElementById('uploadForm');
-        const analyzeBtn = document.getElementById('analyzeBtn');
-        const matchBtn = document.getElementById('matchBtn');
-        const fileInput = document.getElementById('resumeFile');
-        const jdText = document.getElementById('jdText');
-        const fileName = document.getElementById('fileName');
-        const resultDiv = document.getElementById('result');
-        const jdMatchResult = document.getElementById('jdMatchResult');
-        const errorDiv = document.getElementById('error');
-
-        const MAX_FILE_SIZE = 16 * 1024 * 1024;
-        const ALLOWED_TYPES = ['application/pdf', 'text/plain'];
-
-        // File input change handler
-        fileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            
-            if (file) {
-                const validation = validateFile(file);
-                
-                if (!validation.valid) {
-                    showError(validation.error);
-                    fileInput.value = '';
-                    fileName.textContent = '';
-                    fileName.classList.remove('active');
-                    return;
-                }
-                
-                fileName.textContent = `📎 ${file.name} (${formatFileSize(file.size)})`;
-                fileName.classList.add('active');
-                hideError();
-            } else {
-                fileName.textContent = '';
-                fileName.classList.remove('active');
-            }
-        });
-
-        // Resume Analysis Handler
-        uploadForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const file = fileInput.files[0];
-            
-            if (!file) {
-                showError('Please select a resume file to upload.');
-                return;
-            }
-
-            const validation = validateFile(file);
-            if (!validation.valid) {
-                showError(validation.error);
-                return;
-            }
-
-            resetUI();
-            setButtonLoading(analyzeBtn, true);
-
-            const formData = new FormData();
-            formData.append('resume', file);
-
-            try {
-                const res = await fetch('/upload', { 
-                    method: 'POST', 
-                    body: formData 
-                });
-                
-                const data = await res.json();
-
-                if (res.ok && data.success) {
-                    displayResults(data);
-                } else {
-                    showError(data.error || 'Failed to analyze resume. Please try again.');
-                }
-            } catch (error) {
-                console.error('Upload error:', error);
-                showError('Network error. Please check your connection and try again.');
-            } finally {
-                setButtonLoading(analyzeBtn, false);
-            }
-        });
-
-        // JD Match Handler
-        matchBtn.addEventListener('click', async () => {
-            const file = fileInput.files[0];
-            const jdContent = jdText.value.trim();
-
-            if (!file) {
-                showError('Please select a resume file first.');
-                return;
-            }
-
-            if (!jdContent) {
-                showError('Please paste a Job Description to check the match.');
-                jdText.focus();
-                return;
-            }
-
-            if (jdContent.length < 20) {
-                showError('Job Description is too short. Please provide at least 20 characters.');
-                jdText.focus();
-                return;
-            }
-
-            const validation = validateFile(file);
-            if (!validation.valid) {
-                showError(validation.error);
-                return;
-            }
-
-            resetUI();
-            setButtonLoading(matchBtn, true);
-
-            const formData = new FormData();
-            formData.append('resume', file);
-            formData.append('jd_text', jdContent);
-
-            try {
-                const res = await fetch('/match_jd_resume', { 
-                    method: 'POST', 
-                    body: formData 
-                });
-                
-                const data = await res.json();
-
-                if (res.ok && data.success) {
-                    displayJDMatch(data);
-                } else {
-                    showError(data.error || 'Failed to calculate JD match. Please try again.');
-                }
-            } catch (error) {
-                console.error('JD match error:', error);
-                showError('Network error. Please check your connection and try again.');
-            } finally {
-                setButtonLoading(matchBtn, false);
-            }
-        });
-
-        // Validation
-        function validateFile(file) {
-            if (!file) return { valid: false, error: 'No file selected.' };
-            if (file.size > MAX_FILE_SIZE) {
-                return { valid: false, error: 'File size exceeds 16MB limit.' };
-            }
-            if (!ALLOWED_TYPES.includes(file.type)) {
-                return { valid: false, error: 'Invalid file type. Only PDF and TXT allowed.' };
-            }
-            return { valid: true };
-        }
-
-        function formatFileSize(bytes) {
-            if (bytes === 0) return '0 Bytes';
-            const k = 1024;
-            const sizes = ['Bytes', 'KB', 'MB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
-        }
-
-        // Display Results
-        function displayResults(data) {
-            let html = `
-                <h2>📋 Analysis Results</h2>
-                <div class="result-card">
-                    <h3>🎯 Predicted Job Category</h3>
-                    <div class="job-badge">${escapeHtml(data.predicted_job)}</div>
-                </div>
-                
-                <div class="result-card">
-                    <h3>💼 Top Job Matches</h3>
-                    <ul class="match-list">
-            `;
-
-            data.matches.forEach((match, index) => {
-                const percentage = (parseFloat(match.score) * 100).toFixed(1);
-                html += `
-                    <li class="match-item">
-                        <div class="match-header">
-                            <span class="match-rank">#${index + 1}</span>
-                            <span class="match-title">${escapeHtml(match.title)}</span>
-                        </div>
-                        <div class="match-score">Similarity: ${match.score} (${percentage}%)</div>
-                        <div class="score-bar">
-                            <div class="score-fill" style="width: ${percentage}%"></div>
-                        </div>
-                    </li>
-                `;
-            });
-
-            html += `
-                    </ul>
-                </div>
-                
-                <div class="result-card">
-                    <h3>💰 Estimated Salary</h3>
-                    <div class="salary-display">
-                        <span class="salary-icon">💵</span>
-                        <span class="salary-amount">${escapeHtml(data.salary)}</span>
-                    </div>
-                </div>
-            `;
-
-            resultDiv.innerHTML = html;
-            resultDiv.style.display = 'block';
-            resultDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }
-
-        // Display JD Match with Breakdown
-        function displayJDMatch(data) {
-            const percentage = data.match_percentage;
-            const components = data.component_scores || {};
-            
-            let matchLevel = '';
-            let matchClass = '';
-
-            if (percentage >= 80) {
-                matchLevel = 'Excellent Match! 🎉';
-                matchClass = 'excellent';
-            } else if (percentage >= 60) {
-                matchLevel = 'Good Match! 👍';
-                matchClass = 'good';
-            } else if (percentage >= 40) {
-                matchLevel = 'Moderate Match 👌';
-                matchClass = 'moderate';
-            } else {
-                matchLevel = 'Low Match 🤔';
-                matchClass = 'low';
-            }
-
-            let html = `
-                <h2>📊 JD Match Analysis</h2>
-                <div class="match-card ${matchClass}">
-                    <div class="match-percentage-large">${percentage}%</div>
-                    <div class="match-level">${matchLevel}</div>
-                    <div class="match-description">${escapeHtml(data.message)}</div>
-                    <div class="match-bar-container">
-                        <div class="match-bar">
-                            <div class="match-bar-fill" style="width: ${percentage}%"></div>
-                        </div>
-                    </div>
-                </div>
-            `;
-
-            // Add component breakdown if available
-            if (Object.keys(components).length > 0) {
-                html += `
-                    <div class="result-card">
-                        <h3>🔍 Detailed Score Breakdown</h3>
-                        <div class="component-scores">
-                `;
-
-                const componentLabels = {
-                    'semantic': '🧠 Semantic Similarity',
-                    'keyword': '🔑 Keyword Match',
-                    'skills': '⚡ Skills Match',
-                    'context': '📝 Contextual Match'
-                };
-
-                for (const [key, value] of Object.entries(components)) {
-                    const label = componentLabels[key] || key;
-                    html += `
-                        <div class="component-item">
-                            <div class="component-header">
-                                <span class="component-label">${label}</span>
-                                <span class="component-value">${value}%</span>
-                            </div>
-                            <div class="component-bar">
-                                <div class="component-bar-fill" style="width: ${value}%"></div>
-                            </div>
-                        </div>
-                    `;
-                }
-
-                html += `
-                        </div>
-                        <p class="breakdown-note">
-                            <small>💡 The final score is calculated using weighted average: 
-                            Semantic (40%) + Keywords (30%) + Skills (20%) + Context (10%)</small>
-                        </p>
-                    </div>
-                `;
-            }
-
-            jdMatchResult.innerHTML = html;
-            jdMatchResult.style.display = 'block';
-            jdMatchResult.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }
-
-        // UI Controls
-        function setButtonLoading(button, isLoading) {
-            const btnText = button.querySelector('.btn-text');
-            const btnLoader = button.querySelector('.btn-loader');
-            
-            if (isLoading) {
-                button.disabled = true;
-                btnText.style.display = 'none';
-                btnLoader.style.display = 'inline-flex';
-            } else {
-                button.disabled = false;
-                btnText.style.display = 'inline';
-                btnLoader.style.display = 'none';
-            }
-        }
-
-        function resetUI() {
-            resultDiv.style.display = 'none';
-            jdMatchResult.style.display = 'none';
-            errorDiv.style.display = 'none';
-        }
-
-        function showError(msg) {
-            errorDiv.innerHTML = `<strong>⚠️ Error:</strong> ${escapeHtml(msg)}`;
-            errorDiv.style.display = 'block';
-            errorDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }
-
-        function hideError() {
-            errorDiv.style.display = 'none';
-        }
-
-        function escapeHtml(text) {
-            const map = {
-                '&': '&amp;',
-                '<': '&lt;',
-                '>': '&gt;',
-                '"': '&quot;',
-                "'": '&#039;'
-            };
-            return String(text).replace(/[&<>"']/g, m => map[m]);
-        }
-
-        // Drag and drop
-        const fileLabel = document.querySelector('.file-label');
-
-        ['dragover', 'dragenter'].forEach(eventName => {
-            fileLabel.addEventListener(eventName, (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                fileLabel.classList.add('drag-over');
-            });
-        });
-
-        ['dragleave', 'dragend'].forEach(eventName => {
-            fileLabel.addEventListener(eventName, (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                fileLabel.classList.remove('drag-over');
-            });
-        });
-
-        fileLabel.addEventListener('drop', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            fileLabel.classList.remove('drag-over');
-            
-            const files = e.dataTransfer.files;
-            if (files.length > 0) {
-                fileInput.files = files;
-                const event = new Event('change', { bubbles: true });
-                fileInput.dispatchEvent(event);
-            }
-        });
-    });
-    </script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>
