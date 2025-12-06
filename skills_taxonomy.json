@@ -1,0 +1,787 @@
+{
+  "programming_languages": {
+    "python": [
+      "python",
+      "py",
+      "python3",
+      "python2",
+      "python 3",
+      "python 2"
+    ],
+    "java": [
+      "java"
+    ],
+    "javascript": [
+      "javascript",
+      "js",
+      "ecmascript",
+      "es6",
+      "es2015",
+      "vanilla js"
+    ],
+    "typescript": [
+      "typescript",
+      "ts"
+    ],
+    "c++": [
+      "c++",
+      "cpp",
+      "cplusplus"
+    ],
+    "c#": [
+      "c#",
+      "csharp",
+      "c sharp"
+    ],
+    "ruby": [
+      "ruby",
+      "rb"
+    ],
+    "php": [
+      "php"
+    ],
+    "swift": [
+      "swift"
+    ],
+    "kotlin": [
+      "kotlin"
+    ],
+    "go": [
+      "go",
+      "golang"
+    ],
+    "rust": [
+      "rust"
+    ],
+    "scala": [
+      "scala"
+    ],
+    "r": [
+      "r language",
+      "r programming",
+      "r stats",
+      "r studio",
+      "rstudio"
+    ],
+    "matlab": [
+      "matlab"
+    ],
+    "perl": [
+      "perl"
+    ],
+    "dart": [
+      "dart"
+    ],
+    "elixir": [
+      "elixir"
+    ],
+    "haskell": [
+      "haskell"
+    ],
+    "lua": [
+      "lua"
+    ],
+    "shell": [
+      "shell",
+      "bash",
+      "sh"
+    ],
+    "powershell": [
+      "powershell",
+      "pwsh"
+    ],
+    "sql": [
+      "sql"
+    ],
+    "objective-c": [
+      "objective-c",
+      "objective c",
+      "objc"
+    ]
+  },
+  "web_frameworks": {
+    "react": [
+      "react",
+      "reactjs",
+      "react.js",
+      "react js",
+      "react native"
+    ],
+    "angular": [
+      "angular",
+      "angularjs"
+    ],
+    "vue": [
+      "vue",
+      "vuejs",
+      "vue.js"
+    ],
+    "node.js": [
+      "node",
+      "nodejs",
+      "node.js"
+    ],
+    "express": [
+      "express",
+      "expressjs",
+      "express.js"
+    ],
+    "django": [
+      "django"
+    ],
+    "flask": [
+      "flask"
+    ],
+    "spring": [
+      "spring",
+      "spring boot",
+      "springboot"
+    ],
+    "asp.net": [
+      "asp.net",
+      "aspnet",
+      "asp net"
+    ],
+    "next.js": [
+      "next",
+      "nextjs",
+      "next.js"
+    ],
+    "nuxt.js": [
+      "nuxt",
+      "nuxtjs",
+      "nuxt.js"
+    ],
+    "svelte": [
+      "svelte",
+      "sveltejs"
+    ],
+    "fastapi": [
+      "fastapi",
+      "fast api"
+    ],
+    "laravel": [
+      "laravel"
+    ],
+    "rails": [
+      "rails",
+      "ruby on rails",
+      "ror"
+    ],
+    "ember": [
+      "ember",
+      "emberjs",
+      "ember.js"
+    ],
+    "backbone": [
+      "backbone",
+      "backbonejs",
+      "backbone.js"
+    ],
+    "meteor": [
+      "meteor",
+      "meteorjs"
+    ],
+    "gatsby": [
+      "gatsby",
+      "gatsbyjs"
+    ],
+    "remix": [
+      "remix"
+    ],
+    "astro": [
+      "astro"
+    ]
+  },
+  "databases": {
+    "mysql": [
+      "mysql"
+    ],
+    "postgresql": [
+      "postgresql",
+      "postgres",
+      "psql"
+    ],
+    "mongodb": [
+      "mongodb",
+      "mongo"
+    ],
+    "redis": [
+      "redis"
+    ],
+    "oracle": [
+      "oracle",
+      "oracle db"
+    ],
+    "sqlite": [
+      "sqlite"
+    ],
+    "cassandra": [
+      "cassandra"
+    ],
+    "dynamodb": [
+      "dynamodb",
+      "dynamo db"
+    ],
+    "elasticsearch": [
+      "elasticsearch",
+      "elastic search"
+    ],
+    "neo4j": [
+      "neo4j"
+    ],
+    "influxdb": [
+      "influxdb",
+      "influx db"
+    ],
+    "couchdb": [
+      "couchdb",
+      "couch db"
+    ],
+    "mariadb": [
+      "mariadb",
+      "maria db"
+    ],
+    "microsoft sql server": [
+      "sql server",
+      "mssql",
+      "ms sql"
+    ],
+    "firebase": [
+      "firebase"
+    ],
+    "supabase": [
+      "supabase"
+    ],
+    "cockroachdb": [
+      "cockroachdb",
+      "cockroach db"
+    ]
+  },
+  "cloud_platforms": {
+    "aws": [
+      "aws",
+      "amazon web services",
+      "ec2",
+      "s3",
+      "lambda",
+      "cloudwatch"
+    ],
+    "azure": [
+      "azure",
+      "microsoft azure"
+    ],
+    "gcp": [
+      "gcp",
+      "google cloud",
+      "google cloud platform"
+    ],
+    "heroku": [
+      "heroku"
+    ],
+    "digitalocean": [
+      "digitalocean",
+      "digital ocean"
+    ],
+    "linode": [
+      "linode"
+    ],
+    "cloudflare": [
+      "cloudflare"
+    ],
+    "vercel": [
+      "vercel"
+    ],
+    "netlify": [
+      "netlify"
+    ],
+    "railway": [
+      "railway"
+    ]
+  },
+  "devops_tools": {
+    "docker": [
+      "docker"
+    ],
+    "kubernetes": [
+      "kubernetes",
+      "k8s"
+    ],
+    "jenkins": [
+      "jenkins"
+    ],
+    "terraform": [
+      "terraform"
+    ],
+    "ansible": [
+      "ansible"
+    ],
+    "git": [
+      "git"
+    ],
+    "github": [
+      "github"
+    ],
+    "gitlab": [
+      "gitlab"
+    ],
+    "bitbucket": [
+      "bitbucket"
+    ],
+    "circleci": [
+      "circleci",
+      "circle ci"
+    ],
+    "travis ci": [
+      "travis",
+      "travis ci"
+    ],
+    "github actions": [
+      "github actions",
+      "gh actions"
+    ],
+    "argocd": [
+      "argocd",
+      "argo cd"
+    ],
+    "helm": [
+      "helm"
+    ],
+    "vagrant": [
+      "vagrant"
+    ],
+    "puppet": [
+      "puppet"
+    ],
+    "chef": [
+      "chef"
+    ],
+    "prometheus": [
+      "prometheus"
+    ],
+    "grafana": [
+      "grafana"
+    ],
+    "datadog": [
+      "datadog"
+    ],
+    "new relic": [
+      "new relic",
+      "newrelic"
+    ],
+    "splunk": [
+      "splunk"
+    ]
+  },
+  "data_science_ml": {
+    "machine learning": [
+      "machine learning",
+      "ml",
+      "machine-learning",
+      "ml models",
+      "ml algorithms"
+    ],
+    "deep learning": [
+      "deep learning",
+      "dl"
+    ],
+    "tensorflow": [
+      "tensorflow",
+      "tf"
+    ],
+    "pytorch": [
+      "pytorch",
+      "torch"
+    ],
+    "scikit-learn": [
+      "scikit-learn",
+      "sklearn",
+      "scikit learn"
+    ],
+    "pandas": [
+      "pandas"
+    ],
+    "numpy": [
+      "numpy"
+    ],
+    "matplotlib": [
+      "matplotlib"
+    ],
+    "seaborn": [
+      "seaborn"
+    ],
+    "nlp": [
+      "nlp",
+      "natural language processing"
+    ],
+    "computer vision": [
+      "computer vision",
+      "cv"
+    ],
+    "keras": [
+      "keras"
+    ],
+    "xgboost": [
+      "xgboost"
+    ],
+    "lightgbm": [
+      "lightgbm",
+      "light gbm"
+    ],
+    "opencv": [
+      "opencv",
+      "open cv"
+    ],
+    "spacy": [
+      "spacy"
+    ],
+    "nltk": [
+      "nltk"
+    ],
+    "hugging face": [
+      "hugging face",
+      "huggingface",
+      "transformers"
+    ],
+    "jupyter": [
+      "jupyter",
+      "jupyter notebook"
+    ],
+    "apache spark": [
+      "spark",
+      "apache spark",
+      "pyspark"
+    ],
+    "hadoop": [
+      "hadoop"
+    ],
+    "tableau": [
+      "tableau"
+    ],
+    "power bi": [
+      "power bi",
+      "powerbi"
+    ]
+  },
+  "mobile_development": {
+    "react native": [
+      "react native",
+      "react-native"
+    ],
+    "flutter": [
+      "flutter"
+    ],
+    "ionic": [
+      "ionic"
+    ],
+    "xamarin": [
+      "xamarin"
+    ],
+    "android": [
+      "android"
+    ],
+    "ios": [
+      "ios"
+    ],
+    "swift ui": [
+      "swiftui",
+      "swift ui"
+    ],
+    "jetpack compose": [
+      "jetpack compose"
+    ]
+  },
+  "testing_frameworks": {
+    "jest": [
+      "jest"
+    ],
+    "mocha": [
+      "mocha"
+    ],
+    "chai": [
+      "chai"
+    ],
+    "pytest": [
+      "pytest"
+    ],
+    "unittest": [
+      "unittest"
+    ],
+    "selenium": [
+      "selenium"
+    ],
+    "cypress": [
+      "cypress"
+    ],
+    "playwright": [
+      "playwright"
+    ],
+    "junit": [
+      "junit"
+    ],
+    "testng": [
+      "testng"
+    ],
+    "jasmine": [
+      "jasmine"
+    ],
+    "karma": [
+      "karma"
+    ],
+    "enzyme": [
+      "enzyme"
+    ],
+    "testing library": [
+      "testing library",
+      "react testing library"
+    ]
+  },
+  "other_technologies": {
+    "rest": [
+      "rest",
+      "rest api",
+      "restful"
+    ],
+    "graphql": [
+      "graphql",
+      "graph ql"
+    ],
+    "grpc": [
+      "grpc",
+      "grpc"
+    ],
+    "websocket": [
+      "websocket",
+      "websockets"
+    ],
+    "microservices": [
+      "microservices",
+      "micro services"
+    ],
+    "serverless": [
+      "serverless"
+    ],
+    "lambda": [
+      "lambda",
+      "aws lambda"
+    ],
+    "api": [
+      "api"
+    ],
+    "ci/cd": [
+      "ci/cd",
+      "cicd",
+      "continuous integration",
+      "continuous deployment"
+    ],
+    "linux": [
+      "linux"
+    ],
+    "unix": [
+      "unix"
+    ],
+    "windows": [
+      "windows"
+    ],
+    "nginx": [
+      "nginx"
+    ],
+    "apache": [
+      "apache",
+      "apache server"
+    ],
+    "rabbitmq": [
+      "rabbitmq",
+      "rabbit mq"
+    ],
+    "kafka": [
+      "kafka",
+      "apache kafka"
+    ],
+    "elasticsearch": [
+      "elasticsearch"
+    ],
+    "redis": [
+      "redis"
+    ],
+    "memcached": [
+      "memcached"
+    ],
+    "oauth": [
+      "oauth",
+      "oauth2"
+    ],
+    "jwt": [
+      "jwt",
+      "json web token"
+    ],
+    "saml": [
+      "saml"
+    ],
+    "cloudformation": [
+      "cloudformation",
+      "cloud formation"
+    ],
+    "cdk": [
+      "cdk",
+      "aws cdk"
+    ],
+    "sam": [
+      "sam",
+      "aws sam"
+    ]
+  },
+  "methodologies": {
+    "agile": [
+      "agile"
+    ],
+    "scrum": [
+      "scrum"
+    ],
+    "kanban": [
+      "kanban"
+    ],
+    "waterfall": [
+      "waterfall"
+    ],
+    "devops": [
+      "devops"
+    ],
+    "tdd": [
+      "tdd",
+      "test driven development"
+    ],
+    "bdd": [
+      "bdd",
+      "behavior driven development"
+    ],
+    "pair programming": [
+      "pair programming"
+    ]
+  },
+  "soft_skills": {
+    "leadership": [
+      "leadership",
+      "team lead",
+      "leading"
+    ],
+    "communication": [
+      "communication",
+      "communicating"
+    ],
+    "problem solving": [
+      "problem solving",
+      "problem-solving"
+    ],
+    "teamwork": [
+      "teamwork",
+      "team work",
+      "collaboration"
+    ],
+    "analytical": [
+      "analytical",
+      "analysis"
+    ],
+    "project management": [
+      "project management",
+      "pm"
+    ],
+    "critical thinking": [
+      "critical thinking"
+    ],
+    "time management": [
+      "time management"
+    ],
+    "adaptability": [
+      "adaptability",
+      "adaptable"
+    ],
+    "creativity": [
+      "creativity",
+      "creative"
+    ],
+    "attention to detail": [
+      "attention to detail",
+      "detail-oriented"
+    ],
+    "mentoring": [
+      "mentoring",
+      "mentor",
+      "coaching"
+    ]
+  },
+  "design_tools": {
+    "figma": [
+      "figma"
+    ],
+    "sketch": [
+      "sketch"
+    ],
+    "adobe xd": [
+      "adobe xd",
+      "xd"
+    ],
+    "photoshop": [
+      "photoshop"
+    ],
+    "illustrator": [
+      "illustrator"
+    ],
+    "invision": [
+      "invision"
+    ],
+    "zeplin": [
+      "zeplin"
+    ],
+    "framer": [
+      "framer"
+    ]
+  },
+  "other_tools": {
+    "jira": [
+      "jira"
+    ],
+    "confluence": [
+      "confluence"
+    ],
+    "slack": [
+      "slack"
+    ],
+    "trello": [
+      "trello"
+    ],
+    "asana": [
+      "asana"
+    ],
+    "notion": [
+      "notion"
+    ],
+    "postman": [
+      "postman"
+    ],
+    "insomnia": [
+      "insomnia"
+    ],
+    "swagger": [
+      "swagger"
+    ],
+    "vscode": [
+      "vscode",
+      "vs code",
+      "visual studio code"
+    ],
+    "intellij": [
+      "intellij",
+      "intellij idea"
+    ],
+    "eclipse": [
+      "eclipse"
+    ],
+    "vim": [
+      "vim"
+    ],
+    "emacs": [
+      "emacs"
+    ]
+  }
+}

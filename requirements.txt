@@ -1,0 +1,10 @@
+Flask==3.0.3
+gunicorn==22.0.0
+pandas==2.2.2
+numpy==1.26.4
+joblib==1.4.2
+scikit-learn==1.7.2
+sentence-transformers==2.6.1
+torch==2.3.1
+PyPDF2==3.0.1
+Flask-Limiter==3.5.0

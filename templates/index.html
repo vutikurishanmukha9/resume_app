@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description"
+        content="AI-powered resume analyzer that predicts best-fit jobs, estimated salary, and JD match percentage using advanced machine learning">
+    <meta name="keywords" content="resume analyzer, AI resume, job matching, salary prediction, ATS optimization">
+    <meta name="author" content="Vutikuri Shanmukha">
+    <meta name="theme-color" content="#667eea">
+
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="AI Resume Analyzer - Smart Job Matching">
+    <meta property="og:description"
+        content="Upload your resume and get AI-powered job predictions, salary estimates, and JD match analysis">
+    <meta property="og:type" content="website">
+
+    <title>AI Resume Analyzer - Smart Job Matching & Salary Prediction</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+        integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+    <!-- Animated Background -->
+    <div class="animated-bg">
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-robot"></i> AI Resume Analyzer</h1>
+            <p class="subtitle">
+                Upload your resume to predict your best-fit job, estimated salary, and check how well it matches a Job
+                Description with advanced AI-powered analysis.
+            </p>
+        </header>
+
+        <main>
+            <!-- Resume Upload & Analysis Section -->
+            <form id="uploadForm" enctype="multipart/form-data" novalidate>
+                <div class="upload-section">
+                    <!-- File Upload -->
+                    <div class="file-input-wrapper">
+                        <input type="file" id="resumeFile" name="resume" required aria-label="Upload resume file"
+                            aria-describedby="fileHelp">
+                        <label for="resumeFile" class="file-label" tabindex="0">
+                            <i class="fas fa-cloud-upload-alt file-icon"></i>
+                            <span class="file-text">
+                                <strong>Drop your resume here</strong>
+                                <small>or click to browse (PDF, TXT)</small>
+                            </span>
+                        </label>
+                        <div id="fileName" class="file-name" role="status" aria-live="polite"></div>
+                        <small id="fileHelp" class="visually-hidden">Upload a PDF or TXT file, maximum size 16MB</small>
+                    </div>
+
+                    <!-- Job Description Input -->
+                    <div class="jd-section">
+                        <label for="jdText" class="jd-label">
+                            <i class="fas fa-briefcase"></i> Paste Job Description (Optional - for JD Match only)
+                        </label>
+                        <textarea id="jdText" name="jd_text" rows="6"
+                            placeholder="Paste the complete Job Description here to get a detailed match analysis..."
+                            aria-label="Paste job description" aria-describedby="jdHelp"></textarea>
+                        <small id="jdHelp" class="help-text"><i class="fas fa-lightbulb"></i> Tip: Include the full JD
+                            with requirements, skills, and responsibilities for best results</small>
+                    </div>
+
+                    <!-- Buttons -->
+                    <div class="button-group">
+                        <button type="submit" id="analyzeBtn" class="analyze-btn" aria-label="Analyze resume">
+                            <span class="btn-text"><i class="fas fa-search"></i> Analyze Resume</span>
+                            <span class="btn-loader" style="display: none;" aria-hidden="true">
+                                <span class="spinner"></span>
+                                Analyzing...
+                            </span>
+                        </button>
+
+                        <button type="button" id="matchBtn" class="match-btn" aria-label="Check job description match">
+                            <span class="btn-text"><i class="fas fa-chart-line"></i> Check JD Match</span>
+                            <span class="btn-loader" style="display: none;" aria-hidden="true">
+                                <span class="spinner"></span>
+                                Checking...
+                            </span>
+                        </button>
+                    </div>
+                </div>
+            </form>
+
+            <!-- Results Section -->
+            <div id="result" class="result-section" style="display: none;" role="region" aria-live="polite"
+                aria-label="Analysis results">
+                <!-- Dynamic content from JavaScript -->
+            </div>
+
+            <!-- JD Match Result Section -->
+            <div id="jdMatchResult" class="jd-match-result" style="display: none;" role="region" aria-live="polite"
+                aria-label="Job description match results">
+                <!-- JD Match result will appear here -->
+            </div>
+
+            <!-- Error Section -->
+            <div id="error" class="error-message" style="display: none;" role="alert" aria-live="assertive">
+                <!-- Error messages will appear here -->
+            </div>
+        </main>
+
+        <footer>
+            <div class="footer-stats">
+                <div class="stat-item">
+                    <i class="fas fa-file-alt"></i>
+                    <div>
+                        <strong>Formats</strong>
+                        <span>PDF, TXT</span>
+                    </div>
+                </div>
+                <div class="stat-item">
+                    <i class="fas fa-database"></i>
+                    <div>
+                        <strong>Max Size</strong>
+                        <span>16MB</span>
+                    </div>
+                </div>
+                <div class="stat-item">
+                    <i class="fas fa-brain"></i>
+                    <div>
+                        <strong>AI Model</strong>
+                        <span>Transformer</span>
+                    </div>
+                </div>
+            </div>
+            <p class="info-text">
+                <i class="fas fa-calculator"></i> <strong>Match Algorithm:</strong> Multi-factor scoring (Semantic +
+                Keywords + Skills + Context)
+            </p>
+            <p class="privacy-note">
+                <i class="fas fa-lock"></i> Your resume is processed securely and not stored permanently on our servers.
+            </p>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+
+</html>
